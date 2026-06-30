@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CARD_IMG, ADV_LOGO } from "@/lib/assets";
+import { AppStoreBadge, GooglePlayBadge } from "@/components/StoreBadges";
 
 const DESIGNS: Record<string, { name: string; back: string }> = {
   pinkcloud: { name: "Pink Cloud", back: "linear-gradient(140deg,#BFE3FB,#E9D4F0 55%,#FBD3E4)" },
@@ -47,9 +48,9 @@ const shell: React.CSSProperties = { width: "100%", maxWidth: 480 };
 const panel: React.CSSProperties = {
   background: "#fff",
   border: "1px solid #EFE3EC",
-  borderRadius: 20,
-  padding: 22,
-  boxShadow: "0 14px 34px -24px rgba(44,36,51,.5)",
+  borderRadius: 24,
+  padding: "28px 24px",
+  boxShadow: "0 30px 60px -32px rgba(120,80,140,.45)",
   textAlign: "center",
 };
 const h1: React.CSSProperties = {
@@ -175,14 +176,33 @@ function ResultInner() {
         <div style={panel}>
           {success && (
             <>
-              <div style={{ fontSize: 40 }}>🎉</div>
-              <h1 style={h1}>Payment successful!</h1>
-              <p style={{ ...lead, marginTop: 6 }}>
-                We&apos;ve emailed <b style={{ color: "#2C2433" }}>{recipientName || "your friend"}</b> their Cinnamoroll{" "}
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  margin: "0 auto 14px",
+                  borderRadius: "50%",
+                  display: "grid",
+                  placeItems: "center",
+                  background: "linear-gradient(135deg,#34D17F,#13A05B)",
+                  boxShadow: "0 12px 24px -10px rgba(19,160,91,.7)",
+                  color: "#fff",
+                  fontSize: 32,
+                }}
+              >
+                ✓
+              </div>
+              <h1 style={h1}>Payment successful! 🎉</h1>
+              <p style={{ ...lead, marginTop: 8 }}>
+                We&apos;ve emailed <b style={{ color: "#2C2433" }}>{recipientName || "your friend"}</b> their{" "}
                 {cardName} card.
               </p>
-              <div style={{ margin: "16px auto 0", maxWidth: 280 }}>
-                <img src={cardImage} alt={cardName} style={{ width: "100%", borderRadius: 16, display: "block" }} />
+              <div style={{ margin: "18px auto 0", maxWidth: 300 }}>
+                <img
+                  src={cardImage}
+                  alt={cardName}
+                  style={{ width: "100%", borderRadius: 18, display: "block", boxShadow: "0 22px 44px -20px rgba(120,80,140,.6)" }}
+                />
               </div>
               <div style={codeBox}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#C9B8F4", marginBottom: 7 }}>
@@ -198,18 +218,16 @@ function ResultInner() {
                   {copied ? "✓ Copied" : "⧉ Copy code"}
                 </button>
               </div>
-              <p style={{ ...lead, fontSize: 13, marginTop: 12 }}>
+              <p style={{ ...lead, fontSize: 13, marginTop: 14 }}>
                 Download the Aleta Adventure app, then enter this code to activate the card.
               </p>
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <a href={data?.appStore || "#"} target="_blank" rel="noreferrer" style={storeBtn}>
-                   App Store
-                </a>
-                <a href={data?.playStore || "#"} target="_blank" rel="noreferrer" style={storeBtn}>
-                  ▶ Google Play
-                </a>
+                <AppStoreBadge href={data?.appStore || "#"} />
+                <GooglePlayBadge href={data?.playStore || "#"} />
               </div>
-              {merOrderId && <p style={{ ...lead, fontSize: 11, marginTop: 12 }}>Order reference: {merOrderId}</p>}
+              {merOrderId && (
+                <p style={{ ...lead, fontSize: 11, marginTop: 14, color: "#b9b1c4" }}>Order ref: {merOrderId}</p>
+              )}
             </>
           )}
 
@@ -242,18 +260,6 @@ function ResultInner() {
     </div>
   );
 }
-
-const storeBtn: React.CSSProperties = {
-  flex: 1,
-  textAlign: "center",
-  padding: "11px 10px",
-  borderRadius: 12,
-  background: "#2C2433",
-  color: "#fff",
-  textDecoration: "none",
-  fontSize: 13,
-  fontWeight: 700,
-};
 
 export default function PaymentResultPage() {
   return (
