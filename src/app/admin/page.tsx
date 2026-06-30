@@ -39,6 +39,8 @@ export default async function AdminDashboard() {
     createdAt: c.createdAt.toISOString(),
     status: c.status,
     recipientName: c.recipientName ?? null,
+    recipientEmail: c.recipientEmail ?? null,
+    senderName: c.senderName ?? null,
     buyerEmail: c.buyerEmail ?? null,
     amountMinor: c.amountMinor,
     currency: c.currency,
@@ -73,9 +75,12 @@ function Shell({ children, showNav }: { children: React.ReactNode; showNav?: boo
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Gift Card Admin</h1>
           {showNav && (
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+              <Link href="/admin/products" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
+                Products
+              </Link>
               <Link href="/admin/api-docs" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
-                API docs →
+                API docs
               </Link>
               <LogoutButton />
             </div>

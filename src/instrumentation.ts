@@ -25,4 +25,11 @@ export async function register() {
   } finally {
     await sql.end({ timeout: 5 });
   }
+
+  try {
+    const { seedProducts } = await import("@/lib/seed");
+    await seedProducts();
+  } catch (e) {
+    console.error("[seed] failed:", (e as Error).message);
+  }
 }

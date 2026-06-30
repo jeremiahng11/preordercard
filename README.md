@@ -90,11 +90,21 @@ npm run dev            # http://localhost:3000
 
 `/admin` (password from `ADMIN_PASSWORD`) lets staff:
 
-- See every purchased code with **purchase date/time**, recipient, amount, and
-  **status** — Inactive (unpaid), Active, Redeemed, Revoked, Refunded.
-- **Revoke** a code (active/inactive) so it can no longer be redeemed.
-- **Refund** an active/redeemed card — issues an Aleta refund, then marks it Refunded.
-- View the **API docs** to hand to the Aleta Adventure app developers (`/admin/api-docs`).
+- **Codes** — every purchased code with purchase date/time, recipient + email,
+  sender + buyer email, amount, and status (Active, Redeemed, Revoked, Refunded).
+  **Revoke** disables a code; **Refund** issues an Aleta refund then marks it Refunded.
+- **Products** (`/admin/products`) — add new card products (name, price, image
+  upload), edit name/price/artwork, and mark **sold out** or **delist**. The
+  storefront and pricing are driven entirely by these DB products.
+- **API docs** (`/admin/api-docs`) — the redemption reference for the app devs.
+
+## Purchase → code lifecycle
+
+Cards are **only created once payment is confirmed** (nothing is stored for
+abandoned/failed checkouts). After the payment redirect, `/api/confirm` verifies
+SUCCESS via Aleta inquiry, then generates the code, stores the card, and emails
+both the recipient (gift + code) and the buyer (receipt). Emails use Resend when
+`RESEND_API_KEY`/`EMAIL_FROM` are set, otherwise they're logged.
 
 ### Database
 

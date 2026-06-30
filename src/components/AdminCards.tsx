@@ -9,6 +9,8 @@ export type CardView = {
   createdAt: string;
   status: string;
   recipientName: string | null;
+  recipientEmail: string | null;
+  senderName: string | null;
   buyerEmail: string | null;
   amountMinor: number;
   currency: string;
@@ -90,6 +92,7 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
                 <th style={th}>Code</th>
                 <th style={th}>Purchased</th>
                 <th style={th}>Recipient</th>
+                <th style={th}>From (sender)</th>
                 <th style={th}>Amount</th>
                 <th style={th}>Status</th>
                 <th style={th}>Redeemed</th>
@@ -108,6 +111,10 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
                     <td style={{ ...cell, whiteSpace: "nowrap", color: "#aeb6c2" }}>{when(c.createdAt)}</td>
                     <td style={cell}>
                       <div>{c.recipientName || "—"}</div>
+                      <div style={{ color: "#7c8595", fontSize: 11 }}>{c.recipientEmail || ""}</div>
+                    </td>
+                    <td style={cell}>
+                      <div>{c.senderName || "—"}</div>
                       <div style={{ color: "#7c8595", fontSize: 11 }}>{c.buyerEmail || ""}</div>
                     </td>
                     <td style={{ ...cell, whiteSpace: "nowrap" }}>{money(c.amountMinor, c.currency)}</td>

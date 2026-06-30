@@ -12,29 +12,48 @@ export function generateGiftCode(): string {
   return `CNR-${block()}-${block()}`;
 }
 
-export interface CreatePendingInput {
+export interface CreateActiveInput {
   merOrderId: string;
   amountMinor: number;
   currency: string;
   designId: string;
-  recipientName?: string;
-  recipientEmail?: string;
-  senderName?: string;
-  buyerEmail?: string;
-  message?: string;
+  productName?: string | null;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  senderName?: string | null;
+  buyerEmail?: string | null;
+  message?: string | null;
+  apTransId?: string | null;
 }
 
-/** Insert a PENDING gift card, retrying on the (extremely rare) code collision. */
-export async function createPendingCard(input: CreatePendingInput): Promise<GiftCard> {
+/**
+ * Create an ACTIVE (paid, redeemable) gift card with a freshly generated code.
+ * Idempotent on merOrderId: if a card already exists for the order it's returned
+ * with `created=false` (so callers don't re-send emails). Retries on the rare
+ * code collision.
+ */
+export async function createActiveCard(
+  input: CreateActiveInput,
+): Promise<{ card: GiftCard; created: boolean }> {
   const db = getDb();
+
+  const existing = await getByMerOrderId(input.merOrderId);
+  if (existing) return { card: existing, created: false };
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateGiftCode();
-    const row: NewGiftCard = { ...input, code, status: "pending" };
+    const row: NewGiftCard = { ...input, code, status: "active", paidAt: new Date() };
     try {
-      const [created] = await db.insert(giftCards).values(row).returning();
-      return created;
+      const inserted = await db
+        .insert(giftCards)
+        .values(row)
+        .onConflictDoNothing({ target: giftCards.merOrderId })
+        .returning();
+      if (inserted.length) return { card: inserted[0], created: true };
+      // merOrderId conflict → created concurrently; return the existing row.
+      const concurrent = await getByMerOrderId(input.merOrderId);
+      if (concurrent) return { card: concurrent, created: false };
     } catch (e) {
-      // 23505 = unique_violation. Retry only when it's the code that clashed.
       const msg = (e as Error).message || "";
       if (msg.includes("gift_cards_code_uq") && attempt < 4) continue;
       throw e;
@@ -87,21 +106,6 @@ export async function markRefunded(id: string): Promise<GiftCard | null> {
     .where(eq(giftCards.id, id))
     .returning();
   return row ?? null;
-}
-
-/**
- * Activate a card once its payment is confirmed. Idempotent: only flips a
- * PENDING card to ACTIVE; leaves already-active/redeemed cards untouched.
- */
-export async function activateByMerOrderId(merOrderId: string, apTransId?: string): Promise<GiftCard | null> {
-  const db = getDb();
-  const [row] = await db
-    .update(giftCards)
-    .set({ status: "active", paidAt: new Date(), ...(apTransId ? { apTransId } : {}) })
-    .where(and(eq(giftCards.merOrderId, merOrderId), eq(giftCards.status, "pending")))
-    .returning();
-  // If nothing was pending, return the current row (already active/redeemed).
-  return row ?? (await getByMerOrderId(merOrderId));
 }
 
 export type RedeemReason = "NOT_FOUND" | "NOT_PAID" | "ALREADY_REDEEMED" | "NOT_REDEEMABLE";

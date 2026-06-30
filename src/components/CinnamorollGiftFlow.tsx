@@ -1,15 +1,22 @@
 "use client";
 
 import { useState, useMemo, type ChangeEvent } from "react";
-import { CARD_IMG, ADV_LOGO } from "@/lib/assets";
+import { ADV_LOGO } from "@/lib/assets";
 
-type Design = { id: string; name: string; back: string };
+export type StoreProduct = {
+  id: string; // product slug
+  name: string;
+  img: string; // data URL of front art
+  back: string; // CSS gradient for the back face
+  priceMinor: number;
+  currency: string;
+  status: string; // active | soldout | delisted
+};
 
-const DESIGNS: Design[] = [
-  { id: "pinkcloud", name: "Pink Cloud", back: "linear-gradient(140deg,#BFE3FB,#E9D4F0 55%,#FBD3E4)" },
-  { id: "rainbow", name: "Rainbow Breeze", back: "linear-gradient(140deg,#CDE7FF,#F6E3C9 45%,#F8CFE6)" },
-  { id: "seaside", name: "Seaside Holiday", back: "linear-gradient(140deg,#BFE6FB,#A9CDF7 60%,#D9EFFB)" },
-];
+function fmtPrice(minor: number, currency: string): string {
+  const sym = currency === "SGD" ? "S$" : currency + " ";
+  return sym + (minor / 100).toFixed(2);
+}
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
@@ -136,21 +143,20 @@ const STYLES = `
 @keyframes sgin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 `;
 
-function GiftCard({ design, recipient, float, interactive, thumb }: {
-  design: string;
+function GiftCard({ product, recipient, float, interactive, thumb }: {
+  product: StoreProduct;
   recipient?: string;
   float?: boolean;
   interactive?: boolean;
   thumb?: boolean;
 }) {
-  const d = DESIGNS.find((x) => x.id === design) || DESIGNS[0];
   const [flipped, setFlipped] = useState(false);
   const name = (recipient || "").trim().toUpperCase() || "YOUR FRIEND";
 
   if (thumb) {
     return (
       <div className="sg-face" style={{ position: "static", aspectRatio: "1.586/1" }}>
-        <img src={(CARD_IMG as Record<string, string>)[d.id]} alt={d.name} />
+        <img src={product.img} alt={product.name} />
       </div>
     );
   }
@@ -164,12 +170,12 @@ function GiftCard({ design, recipient, float, interactive, thumb }: {
       >
         {/* FRONT — licensed Cinnamoroll art */}
         <div className="sg-face">
-          <img src={(CARD_IMG as Record<string, string>)[d.id]} alt={"Cinnamoroll " + d.name} />
+          <img src={product.img} alt={"Cinnamoroll " + product.name} />
           <div className="sg-shine" />
           {interactive && <div className="sg-fliphint">↻ Tap to flip</div>}
         </div>
         {/* BACK — Aleta personalized back */}
-        <div className="sg-face sg-face-back" style={{ background: d.back }}>
+        <div className="sg-face sg-face-back" style={{ background: product.back }}>
           <div className="sg-shine" />
           <div className="sg-back-pad">
             <div className="sg-back-top">
@@ -197,7 +203,7 @@ function GiftCard({ design, recipient, float, interactive, thumb }: {
   );
 }
 
-export default function CinnamorollGiftFlow() {
+export default function CinnamorollGiftFlow({ products }: { products: StoreProduct[] }) {
   const [step, setStep] = useState<string>("product");
   const [overlay, setOverlay] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -208,7 +214,7 @@ export default function CinnamorollGiftFlow() {
     sender: "",
     buyerEmail: "",
     message: "Hope this makes your day a little cuter! 🎀",
-    design: "pinkcloud",
+    design: products[0]?.id ?? "",
   });
   const [pay, setPay] = useState("paynow");
   const [redeemInput, setRedeemInput] = useState("");
@@ -227,7 +233,9 @@ export default function CinnamorollGiftFlow() {
   const validEmail = emailRe.test(form.email);
   const validBuyer = emailRe.test(form.buyerEmail);
   const detailsOk = form.recipient.trim() && validEmail && form.sender.trim() && validBuyer;
-  const selected = DESIGNS.find((d) => d.id === form.design) || DESIGNS[0];
+  const selected = products.find((d) => d.id === form.design) ?? products[0];
+  const soldOut = selected ? selected.status !== "active" : true;
+  const priceLabel = selected ? fmtPrice(selected.priceMinor, selected.currency) : "";
   const stepIdx = ({ product: 0, details: 0, review: 1, success: 2 } as Record<string, number>)[step] ?? 0;
 
   const copy = () => {
@@ -274,6 +282,26 @@ export default function CinnamorollGiftFlow() {
     }
   };
 
+  if (!selected) {
+    return (
+      <div className="sg-root">
+        <style>{STYLES}</style>
+        <div className="sg-shell">
+          <div className="sg-top">
+            <div className="sg-brand">
+              <img src={ADV_LOGO} alt="Aleta Adventure" style={{ height: 30 }} />
+              <span style={{ color: "#6B39E8", fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 17, marginLeft: 8 }}>Aleta Adventure</span>
+            </div>
+          </div>
+          <div className="sg-panel" style={{ textAlign: "center" }}>
+            <h1 className="sg-h1" style={{ fontSize: 20 }}>No cards available</h1>
+            <p className="sg-lead" style={{ marginTop: 8 }}>Please check back soon — new collectible cards are on the way.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="sg-root">
       <style>{STYLES}</style>
@@ -297,7 +325,7 @@ export default function CinnamorollGiftFlow() {
         {/* ===== PRODUCT ===== */}
         {step === "product" && (
           <div className="sg-fadein">
-            <GiftCard design={form.design} recipient={form.recipient} float interactive />
+            <GiftCard product={selected} recipient={form.recipient} float interactive />
             <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>
               Cinnamoroll · <span style={{ color: "var(--rose)" }}>{selected.name}</span> — tap the card to see the back
             </div>
@@ -311,13 +339,13 @@ export default function CinnamorollGiftFlow() {
               </p>
             </div>
 
-            <label className="sg-label" style={{ marginTop: 16 }}>Choose a design — 3 to collect</label>
+            <label className="sg-label" style={{ marginTop: 16 }}>Choose a design — {products.length} to collect</label>
             <div className="sg-swatches">
-              {DESIGNS.map((d) => (
-                <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })}>
-                  <img src={(CARD_IMG as Record<string, string>)[d.id]} alt={d.name} />
+              {products.map((d) => (
+                <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
+                  <img src={d.img} alt={d.name} />
                   {form.design === d.id && <span className="sg-sw-tick">✓</span>}
-                  <div className="sg-sw-name">{d.name}</div>
+                  <div className="sg-sw-name">{d.name}{d.status !== "active" ? " · Sold out" : ""}</div>
                 </div>
               ))}
             </div>
@@ -332,12 +360,14 @@ export default function CinnamorollGiftFlow() {
               <div className="sg-row">
                 <div>
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>One-time gift price</div>
-                  <div className="sg-row" style={{ gap: 8 }}><span className="sg-price">S$18.00</span><span className="sg-strike">S$25.00</span></div>
+                  <div className="sg-row" style={{ gap: 8 }}><span className="sg-price">{priceLabel}</span></div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "var(--rose)", background: "#FFF0F5", padding: "5px 10px", borderRadius: 99 }}>28% OFF</div>
+                {soldOut && <div style={{ fontSize: 11, fontWeight: 800, color: "var(--rose)", background: "#FFF0F5", padding: "5px 10px", borderRadius: 99 }}>SOLD OUT</div>}
               </div>
-              <button className="sg-btn sg-btn-primary" style={{ marginTop: 14 }} onClick={() => setStep("details")}>Send {selected.name} as a gift →</button>
-              <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>Limited stock · Price incl. 9% GST</p>
+              <button className="sg-btn sg-btn-primary" style={{ marginTop: 14 }} disabled={soldOut} onClick={() => setStep("details")}>
+                {soldOut ? "Sold out" : `Send ${selected.name} as a gift →`}
+              </button>
+              <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>Limited edition · Price incl. GST</p>
             </div>
           </div>
         )}
@@ -345,7 +375,7 @@ export default function CinnamorollGiftFlow() {
         {/* ===== DETAILS ===== */}
         {step === "details" && (
           <div className="sg-fadein">
-            <GiftCard design={form.design} recipient={form.recipient} interactive />
+            <GiftCard product={selected} recipient={form.recipient} interactive />
             <div className="sg-panel" style={{ marginTop: 16 }}>
               <h1 className="sg-h1" style={{ fontSize: 20 }}>Who's it for?</h1>
 
@@ -369,11 +399,11 @@ export default function CinnamorollGiftFlow() {
 
               <label className="sg-label">Design</label>
               <div className="sg-swatches">
-                {DESIGNS.map((d) => (
-                  <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })}>
-                    <img src={(CARD_IMG as Record<string, string>)[d.id]} alt={d.name} />
+                {products.map((d) => (
+                  <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
+                    <img src={d.img} alt={d.name} />
                     {form.design === d.id && <span className="sg-sw-tick">✓</span>}
-                    <div className="sg-sw-name">{d.name}</div>
+                    <div className="sg-sw-name">{d.name}{d.status !== "active" ? " · Sold out" : ""}</div>
                   </div>
                 ))}
               </div>
@@ -381,7 +411,7 @@ export default function CinnamorollGiftFlow() {
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button className="sg-btn sg-btn-ghost" style={{ flex: ".7" }} onClick={() => setStep("product")}>Back</button>
-              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={!detailsOk} onClick={() => setStep("review")}>Continue to pay</button>
+              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={!detailsOk || soldOut} onClick={() => setStep("review")}>Continue to pay</button>
             </div>
           </div>
         )}
@@ -392,7 +422,7 @@ export default function CinnamorollGiftFlow() {
             <div className="sg-panel">
               <div className="sg-steplabel" style={{ marginBottom: 12 }}>Order summary</div>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <div style={{ width: 96, flexShrink: 0, borderRadius: 12, overflow: "hidden" }}><GiftCard design={form.design} thumb /></div>
+                <div style={{ width: 96, flexShrink: 0, borderRadius: 12, overflow: "hidden" }}><GiftCard product={selected} thumb /></div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 14, fontFamily: "'Baloo 2'" }}>Cinnamoroll Visa Platinum</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{selected.name} · Limited Edition</div>
@@ -401,10 +431,8 @@ export default function CinnamorollGiftFlow() {
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
-                <div className="sg-sumrow muted"><span>Gift card</span><span>S$25.00</span></div>
-                <div className="sg-sumrow muted"><span>Limited edition discount</span><span style={{ color: "var(--rose)" }}>−S$8.51</span></div>
-                <div className="sg-sumrow muted"><span>GST (9%)</span><span>S$1.49</span></div>
-                <div className="sg-sumtotal"><span style={{ fontWeight: 800, fontSize: 15 }}>Total</span><span className="sg-price">S$18.00</span></div>
+                <div className="sg-sumrow muted"><span>Gift card · {selected.name}</span><span>{priceLabel}</span></div>
+                <div className="sg-sumtotal"><span style={{ fontWeight: 800, fontSize: 15 }}>Total</span><span className="sg-price">{priceLabel}</span></div>
               </div>
             </div>
 
@@ -425,7 +453,7 @@ export default function CinnamorollGiftFlow() {
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button className="sg-btn sg-btn-ghost" style={{ flex: ".7" }} onClick={() => setStep("details")}>Back</button>
-              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={paying} onClick={handlePay}>{paying ? "Redirecting…" : pay === "card" ? "Pay S$18.00 with card →" : "Pay S$18.00"}</button>
+              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={paying || soldOut} onClick={handlePay}>{paying ? "Redirecting…" : pay === "card" ? `Pay ${priceLabel} with card →` : `Pay ${priceLabel}`}</button>
             </div>
             {payError && <p className="sg-hint" style={{ textAlign: "center", marginTop: 10, color: "var(--rose)" }}>{payError}</p>}
             <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>🔒 Secured by Aleta Planet · Card payments use the sandbox gateway</p>
@@ -474,7 +502,7 @@ export default function CinnamorollGiftFlow() {
                 <div><b>Subject:</b> 🎀 {form.sender} sent you a Cinnamoroll Visa card!</div>
               </div>
               <div className="sg-mail-body">
-                <GiftCard design={form.design} recipient={form.recipient} interactive />
+                <GiftCard product={selected} recipient={form.recipient} interactive />
                 <h2 className="sg-display" style={{ fontWeight: 800, fontSize: 19, marginTop: 16 }}>You've got a gift, {form.recipient}! 🎁</h2>
                 <p className="sg-lead" style={{ marginTop: 8, fontStyle: "italic" }}>"{form.message}"</p>
                 <p className="sg-hint" style={{ marginTop: 4 }}>— from {form.sender}</p>
@@ -500,7 +528,7 @@ export default function CinnamorollGiftFlow() {
             </div>
             {!redeemed ? (
               <div className="sg-fadein">
-                <GiftCard design={form.design} recipient={form.recipient} interactive />
+                <GiftCard product={selected} recipient={form.recipient} interactive />
                 <div className="sg-panel" style={{ marginTop: 16 }}>
                   <h2 className="sg-display" style={{ fontWeight: 800, fontSize: 18 }}>Enter your gift code</h2>
                   <p className="sg-lead" style={{ marginTop: 4, fontSize: 13 }}>Found in your gift email from {form.sender}.</p>
@@ -514,7 +542,7 @@ export default function CinnamorollGiftFlow() {
                 <div className="sg-success-ring">✓</div>
                 <h2 className="sg-display" style={{ fontWeight: 800, fontSize: 20 }}>Card activated! 🎀</h2>
                 <p className="sg-lead" style={{ marginTop: 6 }}>Your Cinnamoroll {selected.name} card is now in your Aleta wallet.</p>
-                <div style={{ marginTop: 16 }}><GiftCard design={form.design} recipient={form.recipient} float interactive /></div>
+                <div style={{ marginTop: 16 }}><GiftCard product={selected} recipient={form.recipient} float interactive /></div>
                 <button className="sg-btn sg-btn-primary" style={{ marginTop: 18 }} onClick={() => { setOverlay(null); setRedeemed(false); }}>Go to my wallet</button>
               </div>
             )}

@@ -8,8 +8,35 @@ export const GIFT_AMOUNT_MINOR = "1800";
 export const DESIGN_IDS = ["pinkcloud", "rainbow", "seaside"] as const;
 export type DesignId = (typeof DESIGN_IDS)[number];
 
+export const DESIGN_NAMES: Record<string, string> = {
+  pinkcloud: "Pink Cloud",
+  rainbow: "Rainbow Breeze",
+  seaside: "Seaside Holiday",
+};
+
+export function designName(id: string): string {
+  return DESIGN_NAMES[id] ?? "Cinnamoroll";
+}
+
 export function isDesignId(v: unknown): v is DesignId {
   return typeof v === "string" && (DESIGN_IDS as readonly string[]).includes(v);
+}
+
+/** Format a minor-unit amount for display, e.g. (1800, "SGD") → "S$18.00". */
+export function formatAmount(minor: number, currency: string): string {
+  const symbol = currency === "SGD" ? "S$" : `${currency} `;
+  return `${symbol}${(minor / 100).toFixed(2)}`;
+}
+
+/** Aleta Adventure app store links (override via env with the real URLs). */
+export function storeLinks() {
+  return {
+    appStore:
+      process.env.APP_STORE_URL || "https://apps.apple.com/sg/app/aleta-adventure",
+    playStore:
+      process.env.PLAY_STORE_URL ||
+      "https://play.google.com/store/apps/details?id=com.aletaplanet.adventure",
+  };
 }
 
 /**

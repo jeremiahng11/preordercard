@@ -20,7 +20,8 @@ export const giftCards = pgTable(
 
     amountMinor: integer("amount_minor").notNull(),
     currency: varchar("currency", { length: 3 }).notNull(),
-    designId: varchar("design_id", { length: 32 }).notNull(),
+    designId: varchar("design_id", { length: 48 }).notNull(),
+    productName: varchar("product_name", { length: 120 }),
 
     recipientName: varchar("recipient_name", { length: 120 }),
     recipientEmail: varchar("recipient_email", { length: 200 }),
@@ -43,6 +44,35 @@ export const giftCards = pgTable(
 
 export type GiftCard = typeof giftCards.$inferSelect;
 export type NewGiftCard = typeof giftCards.$inferInsert;
+
+/**
+ * Sellable card products managed by admin. `slug` is the stable id stored on
+ * gift cards as designId. `image` is a data URL (front art); `back` is the CSS
+ * gradient for the personalized back face. status: active | soldout | delisted.
+ */
+export const products = pgTable(
+  "products",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    slug: varchar("slug", { length: 48 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    priceMinor: integer("price_minor").notNull(),
+    currency: varchar("currency", { length: 3 }).notNull().default("SGD"),
+    image: text("image").notNull(), // data URL of the front artwork
+    back: text("back").notNull().default("linear-gradient(140deg,#BFE3FB,#E9D4F0 55%,#FBD3E4)"),
+    status: varchar("status", { length: 16 }).notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    slugUq: uniqueIndex("products_slug_uq").on(t.slug),
+  }),
+);
+
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
+export type ProductStatus = "active" | "soldout" | "delisted";
 
 export type GiftCardStatus =
   | "pending"

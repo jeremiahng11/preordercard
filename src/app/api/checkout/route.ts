@@ -6,15 +6,12 @@ import {
   type OrderRequest,
 } from "@/lib/aleta";
 import {
-  CURRENCY,
   DEFAULT_BILLING,
   DEFAULT_CONTACT_NUMBER,
-  GIFT_AMOUNT_MINOR,
-  isDesignId,
   resolveBaseUrl,
 } from "@/lib/config";
 import { isDbConfigured } from "@/lib/db";
-import { createPendingCard } from "@/lib/giftcards";
+import { getProductBySlug, isPurchasable } from "@/lib/products";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,9 +23,10 @@ function str(v: unknown, max = 200): string | undefined {
 }
 
 /**
- * Creates an Aleta Planet order and returns the hosted-page `paymentLink`.
- * Persists a PENDING gift card first so the redemption code exists and can be
- * activated by the payment webhook. The browser redirects to the paymentLink.
+ * Creates an Aleta Planet order for the selected product and returns the
+ * hosted-page `paymentLink`. The order amount comes from the product in the DB
+ * (authoritative — never trusts a client price). No gift card is stored yet;
+ * it's created on payment confirmation (see /api/confirm).
  */
 export async function POST(req: NextRequest) {
   let payload: Record<string, unknown>;
@@ -40,18 +38,22 @@ export async function POST(req: NextRequest) {
 
   const { design, buyerEmail } = payload;
 
-  if (!isDesignId(design)) {
-    return NextResponse.json({ error: "Unknown card design" }, { status: 400 });
+  if (typeof design !== "string" || !design) {
+    return NextResponse.json({ error: "A card must be selected" }, { status: 400 });
   }
   if (typeof buyerEmail !== "string" || !EMAIL_RE.test(buyerEmail)) {
     return NextResponse.json({ error: "A valid buyer email is required" }, { status: 400 });
   }
-
   if (!isDbConfigured()) {
-    return NextResponse.json(
-      { error: "Database is not configured", detail: "Set DATABASE_URL to enable purchases" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Store is not configured" }, { status: 500 });
+  }
+
+  const product = await getProductBySlug(design);
+  if (!product) {
+    return NextResponse.json({ error: "Unknown card" }, { status: 400 });
+  }
+  if (!isPurchasable(product)) {
+    return NextResponse.json({ error: "This card is no longer available" }, { status: 409 });
   }
 
   let cfg;
@@ -67,30 +69,9 @@ export async function POST(req: NextRequest) {
   const baseUrl = resolveBaseUrl(req.nextUrl.origin);
   const merOrderId = generateMerOrderId();
 
-  // 1) Persist a pending gift card (with its redemption code) before paying.
-  try {
-    await createPendingCard({
-      merOrderId,
-      amountMinor: Number.parseInt(GIFT_AMOUNT_MINOR, 10),
-      currency: CURRENCY,
-      designId: design,
-      recipientName: str(payload.recipient, 120),
-      recipientEmail: str(payload.recipientEmail, 200),
-      senderName: str(payload.sender, 120),
-      buyerEmail,
-      message: str(payload.message, 280),
-    });
-  } catch (e) {
-    return NextResponse.json(
-      { error: "Could not create the gift card", detail: (e as Error).message },
-      { status: 500 },
-    );
-  }
-
-  // 2) Create the Aleta order to obtain the hosted-page payment link.
   const order: OrderRequest = {
     merOrderId,
-    merTransAmt: GIFT_AMOUNT_MINOR,
+    merTransAmt: String(product.priceMinor),
     frontUrl: `${baseUrl}/api/payment-return`,
     webhook: `${baseUrl}/api/webhook`,
     customerEmail: buyerEmail,
@@ -119,8 +100,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       merOrderId,
       paymentLink,
-      amount: GIFT_AMOUNT_MINOR,
-      currency: CURRENCY,
+      amount: product.priceMinor,
+      currency: product.currency,
     });
   } catch (e) {
     console.error("[checkout] order failed:", (e as Error).message);
