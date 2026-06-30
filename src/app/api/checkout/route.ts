@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
       currency: CURRENCY,
     });
   } catch (e) {
+    console.error("[checkout] order failed:", (e as Error).message);
     return NextResponse.json(
       { error: "Failed to reach payment gateway", detail: (e as Error).message },
       { status: 502 },

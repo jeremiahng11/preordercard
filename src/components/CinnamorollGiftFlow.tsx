@@ -259,7 +259,8 @@ export default function CinnamorollGiftFlow() {
       });
       const data = await res.json();
       if (!res.ok || !data.paymentLink) {
-        throw new Error(data.error || data.resultMsg || "Could not start the payment. Please try again.");
+        const base = data.error || data.resultMsg || "Could not start the payment. Please try again.";
+        throw new Error(data.detail ? `${base} — ${data.detail}` : base);
       }
       try {
         localStorage.setItem("gac:order:" + data.merOrderId, JSON.stringify({ form }));
