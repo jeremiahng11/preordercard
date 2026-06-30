@@ -128,6 +128,7 @@ const STYLES = `
 .sg-sw-name{font-size:9.5px;font-weight:700;text-align:center;padding:5px 2px;color:var(--ink);background:#fff;}
 .sg-sw.sel .sg-sw-name{color:var(--rose);}
 .sg-sw-tick{position:absolute;top:5px;right:5px;width:17px;height:17px;border-radius:99px;background:var(--rose);color:#fff;font-size:10px;display:grid;place-items:center;}
+.sg-sw-soon{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);background:rgba(107,57,232,.92);color:#fff;font-size:11px;font-weight:800;letter-spacing:1.5px;text-align:center;padding:6px 0;text-transform:uppercase;}
 
 .sg-pay{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;margin-bottom:10px;transition:.15s;}
 .sg-pay.sel{border-color:var(--rose);background:#FFF5F9;}
@@ -173,11 +174,33 @@ function GiftCard({ product, recipient, float, interactive, thumb }: {
 }) {
   const [flipped, setFlipped] = useState(false);
   const name = (recipient || "").trim().toUpperCase() || "YOUR FRIEND";
+  const soonDate = fmtComingSoon(product.comingSoonDate);
+
+  const comingSoonBanner = product.comingSoon ? (
+    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none", zIndex: 3 }}>
+      <div
+        style={{
+          width: "170%",
+          transform: "rotate(-9deg)",
+          background: "rgba(44,36,51,.84)",
+          color: "#fff",
+          textAlign: "center",
+          padding: "9px 0",
+          boxShadow: "0 10px 24px rgba(0,0,0,.35)",
+          backdropFilter: "blur(1px)",
+        }}
+      >
+        <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 19, letterSpacing: 2.5 }}>COMING SOON</div>
+        {soonDate && <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, opacity: 0.92, marginTop: 1 }}>{soonDate}</div>}
+      </div>
+    </div>
+  ) : null;
 
   if (thumb) {
     return (
       <div className="sg-face" style={{ position: "static", aspectRatio: "1.586/1" }}>
         <img src={product.img} alt={product.name} />
+        {comingSoonBanner}
       </div>
     );
   }
@@ -194,6 +217,7 @@ function GiftCard({ product, recipient, float, interactive, thumb }: {
           <img src={product.img} alt={"Cinnamoroll " + product.name} />
           <div className="sg-shine" />
           {interactive && <div className="sg-fliphint">↻ Tap to flip</div>}
+          {comingSoonBanner}
         </div>
         {/* BACK — Aleta personalized back */}
         <div className="sg-face sg-face-back" style={{ background: product.back }}>
@@ -428,9 +452,9 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
             <div className="sg-swatches">
               {cards.map((d) => (
                 <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
-                  <img src={d.img} alt={d.name} />
+                  <img src={d.img} alt={d.name} />{d.comingSoon && <div className="sg-sw-soon">Coming Soon</div>}
                   {form.design === d.id && <span className="sg-sw-tick">✓</span>}
-                  <div className="sg-sw-name">{d.name}{d.comingSoon ? " · Coming Soon" : d.status !== "active" ? " · Sold out" : ""}</div>
+                  <div className="sg-sw-name">{d.name}{d.comingSoon ? "" : d.status !== "active" ? " · Sold out" : ""}</div>
                 </div>
               ))}
             </div>
@@ -465,7 +489,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
                   ? comingSoonLabel
                     ? `Available from ${comingSoonLabel}`
                     : "Available soon — check back shortly"
-                  : "Limited edition · Price incl. GST"}
+                  : "Limited edition"}
               </p>
             </div>
           </div>
@@ -500,9 +524,9 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
               <div className="sg-swatches">
                 {cards.map((d) => (
                   <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
-                    <img src={d.img} alt={d.name} />
+                    <img src={d.img} alt={d.name} />{d.comingSoon && <div className="sg-sw-soon">Coming Soon</div>}
                     {form.design === d.id && <span className="sg-sw-tick">✓</span>}
-                    <div className="sg-sw-name">{d.name}{d.comingSoon ? " · Coming Soon" : d.status !== "active" ? " · Sold out" : ""}</div>
+                    <div className="sg-sw-name">{d.name}{d.comingSoon ? "" : d.status !== "active" ? " · Sold out" : ""}</div>
                   </div>
                 ))}
               </div>
