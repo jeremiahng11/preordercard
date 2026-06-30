@@ -27,8 +27,8 @@ export async function register() {
   }
 
   try {
-    const { seedProducts } = await import("@/lib/seed");
-    await seedProducts();
+    const { seedDefaults } = await import("@/lib/seed");
+    await seedDefaults();
   } catch (e) {
     console.error("[seed] failed:", (e as Error).message);
   }

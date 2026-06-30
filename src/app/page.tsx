@@ -1,27 +1,41 @@
-import CinnamorollGiftFlow, { type StoreProduct } from "@/components/CinnamorollGiftFlow";
+import CinnamorollGiftFlow, { type StoreCollection } from "@/components/CinnamorollGiftFlow";
 import { isDbConfigured } from "@/lib/db";
+import { listActiveCollections } from "@/lib/collections";
 import { listStorefrontProducts } from "@/lib/products";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  let products: StoreProduct[] = [];
+  let collections: StoreCollection[] = [];
+
   if (isDbConfigured()) {
     try {
-      const rows = await listStorefrontProducts();
-      products = rows.map((p) => ({
-        id: p.slug,
-        name: p.name,
-        img: p.image,
-        back: p.back,
-        priceMinor: p.priceMinor,
-        currency: p.currency,
-        status: p.status,
-      }));
+      const [colls, prods] = await Promise.all([listActiveCollections(), listStorefrontProducts()]);
+      collections = colls
+        .map((c) => ({
+          id: c.slug,
+          name: c.name,
+          eyebrow: c.eyebrow ?? "",
+          title: c.title ?? c.name,
+          description: c.description ?? "",
+          cards: prods
+            .filter((p) => p.collectionId === c.id)
+            .map((p) => ({
+              id: p.slug,
+              name: p.name,
+              img: p.image,
+              back: p.back,
+              priceMinor: p.priceMinor,
+              currency: p.currency,
+              status: p.status,
+            })),
+        }))
+        .filter((c) => c.cards.length > 0);
     } catch {
       /* fall back to empty state */
     }
   }
-  return <CinnamorollGiftFlow products={products} />;
+
+  return <CinnamorollGiftFlow collections={collections} />;
 }

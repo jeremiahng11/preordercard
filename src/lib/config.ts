@@ -39,20 +39,35 @@ export function storeLinks() {
   };
 }
 
+function isInternalHost(host: string): boolean {
+  return /^(0\.0\.0\.0|127\.|localhost|\[?::1\]?)/.test(host);
+}
+
 /**
  * Resolve the publicly reachable base URL for this deployment, used to build
- * the `frontUrl` (redirect) and `webhook` (async notification) callbacks.
+ * the `frontUrl` (redirect) and `webhook` (async notification) callbacks AND
+ * the post-payment redirect target.
  *
- * Priority: explicit APP_BASE_URL → Railway's injected domain → request origin.
+ * Priority: explicit APP_BASE_URL → proxy's X-Forwarded-Host (Railway/etc.) →
+ * Railway's injected domain → request origin → localhost. Internal addresses
+ * (0.0.0.0, 127.x, localhost) are skipped so we never redirect there in prod.
  */
-export function resolveBaseUrl(requestOrigin?: string): string {
+export function resolveBaseUrl(req?: { headers?: Headers; nextUrl?: { origin: string } }): string {
   const explicit = process.env.APP_BASE_URL;
   if (explicit) return explicit.replace(/\/$/, "");
+
+  const h = req?.headers;
+  const fwdHost = h?.get("x-forwarded-host") || h?.get("host");
+  if (fwdHost && !isInternalHost(fwdHost)) {
+    const proto = h?.get("x-forwarded-proto")?.split(",")[0] || "https";
+    return `${proto}://${fwdHost}`.replace(/\/$/, "");
+  }
 
   const railway = process.env.RAILWAY_PUBLIC_DOMAIN;
   if (railway) return `https://${railway.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
 
-  if (requestOrigin) return requestOrigin.replace(/\/$/, "");
+  const origin = req?.nextUrl?.origin;
+  if (origin && !isInternalHost(new URL(origin).host)) return origin.replace(/\/$/, "");
   return "http://localhost:3000";
 }
 

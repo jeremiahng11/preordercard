@@ -12,7 +12,10 @@ export type ProductView = {
   image: string;
   back: string;
   status: string;
+  collectionId: string | null;
 };
+
+export type CollectionOption = { id: string; name: string };
 
 const STATUS_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
   active: { label: "On sale", bg: "#16361f", fg: "#7ee2a0" },
@@ -33,7 +36,13 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export default function AdminProducts({ products }: { products: ProductView[] }) {
+export default function AdminProducts({
+  products,
+  collections,
+}: {
+  products: ProductView[];
+  collections: CollectionOption[];
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,11 +76,16 @@ export default function AdminProducts({ products }: { products: ProductView[] })
         </div>
       )}
 
-      <AddProduct busy={busy} onCreate={(p) => call("/api/admin/products", p)} />
+      {collections.length === 0 && (
+        <div style={{ background: "#3a3320", color: "#f4d58d", padding: "10px 14px", borderRadius: 8, marginBottom: 14, fontSize: 13 }}>
+          Create a collection first, then add cards to it.
+        </div>
+      )}
+      <AddProduct busy={busy} collections={collections} onCreate={(p) => call("/api/admin/products", p)} />
 
       <div style={{ display: "grid", gap: 14, marginTop: 20 }}>
         {products.map((p) => (
-          <ProductRow key={p.id} product={p} busy={busy} call={call} />
+          <ProductRow key={p.id} product={p} collections={collections} busy={busy} call={call} />
         ))}
       </div>
     </div>
@@ -80,14 +94,17 @@ export default function AdminProducts({ products }: { products: ProductView[] })
 
 function AddProduct({
   busy,
+  collections,
   onCreate,
 }: {
   busy: boolean;
-  onCreate: (p: { name: string; priceMinor: number; image: string }) => Promise<boolean>;
+  collections: CollectionOption[];
+  onCreate: (p: { name: string; priceMinor: number; image: string; collectionId: string }) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("18.00");
+  const [collectionId, setCollectionId] = useState(collections[0]?.id ?? "");
   const [image, setImage] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -98,8 +115,8 @@ function AddProduct({
 
   async function submit() {
     const priceMinor = Math.round(parseFloat(price) * 100);
-    if (!name.trim() || !image || !Number.isFinite(priceMinor) || priceMinor <= 0) return;
-    const ok = await onCreate({ name: name.trim(), priceMinor, image });
+    if (!name.trim() || !image || !collectionId || !Number.isFinite(priceMinor) || priceMinor <= 0) return;
+    const ok = await onCreate({ name: name.trim(), priceMinor, image, collectionId });
     if (ok) {
       setName("");
       setPrice("18.00");
@@ -123,6 +140,12 @@ function AddProduct({
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         <CardPreview image={image} />
         <div style={{ flex: 1, minWidth: 220 }}>
+          <Label>Collection</Label>
+          <select style={input} value={collectionId} onChange={(e) => setCollectionId(e.target.value)}>
+            {collections.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
           <Label>Name</Label>
           <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Starry Night" />
           <Label>Price (SGD)</Label>
@@ -145,18 +168,22 @@ function AddProduct({
 
 function ProductRow({
   product,
+  collections,
   busy,
   call,
 }: {
   product: ProductView;
+  collections: CollectionOption[];
   busy: boolean;
   call: (url: string, payload: unknown) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(product.name);
   const [price, setPrice] = useState(dollars(product.priceMinor));
+  const [collectionId, setCollectionId] = useState(product.collectionId ?? "");
   const [image, setImage] = useState<string | null>(null);
   const s = STATUS_STYLE[product.status] ?? { label: product.status, bg: "#2a2e36", fg: "#aab2c0" };
+  const collName = collections.find((c) => c.id === product.collectionId)?.name ?? "—";
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -165,7 +192,7 @@ function ProductRow({
 
   async function save() {
     const priceMinor = Math.round(parseFloat(price) * 100);
-    const payload: Record<string, unknown> = { id: product.id, name: name.trim(), priceMinor };
+    const payload: Record<string, unknown> = { id: product.id, name: name.trim(), priceMinor, collectionId };
     if (image) payload.image = image;
     const ok = await call("/api/admin/products/update", payload);
     if (ok) {
@@ -181,6 +208,12 @@ function ProductRow({
         <div style={{ flex: 1, minWidth: 220 }}>
           {editing ? (
             <>
+              <Label>Collection</Label>
+              <select style={input} value={collectionId} onChange={(e) => setCollectionId(e.target.value)}>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
               <Label>Name</Label>
               <input style={input} value={name} onChange={(e) => setName(e.target.value)} />
               <Label>Price (SGD)</Label>
@@ -205,7 +238,7 @@ function ProductRow({
                 </span>
               </div>
               <div style={{ color: "#aeb6c2", fontSize: 14, marginTop: 4 }}>
-                {product.currency} {dollars(product.priceMinor)}
+                {product.currency} {dollars(product.priceMinor)} · {collName}
               </div>
               <div style={{ color: "#5b6473", fontSize: 11, marginTop: 2 }}>slug: {product.slug}</div>
 

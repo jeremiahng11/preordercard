@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
   const priceMinor = Number(body.priceMinor);
   const back = typeof body.back === "string" && body.back.trim() ? body.back.trim() : undefined;
+  const collectionId = typeof body.collectionId === "string" && body.collectionId ? body.collectionId : null;
 
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
   if (!Number.isInteger(priceMinor) || priceMinor <= 0) {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const product = await createProduct({ name, priceMinor, image: body.image, back });
+    const product = await createProduct({ name, priceMinor, image: body.image, back, collectionId });
     return NextResponse.json({ ok: true, id: product.id, slug: product.slug });
   } catch (e) {
     return NextResponse.json({ error: "Could not create product", detail: (e as Error).message }, { status: 500 });

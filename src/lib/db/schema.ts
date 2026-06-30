@@ -46,14 +46,42 @@ export type GiftCard = typeof giftCards.$inferSelect;
 export type NewGiftCard = typeof giftCards.$inferInsert;
 
 /**
+ * A collection groups cards under a brand/theme (e.g. Cinnamoroll, Hello Kitty)
+ * and carries the editable storefront marketing copy (eyebrow/title/description).
+ * status: active | hidden.
+ */
+export const collections = pgTable(
+  "collections",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    slug: varchar("slug", { length: 48 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    eyebrow: varchar("eyebrow", { length: 160 }),
+    title: varchar("title", { length: 160 }),
+    description: text("description"),
+    status: varchar("status", { length: 16 }).notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ slugUq: uniqueIndex("collections_slug_uq").on(t.slug) }),
+);
+
+export type Collection = typeof collections.$inferSelect;
+export type NewCollection = typeof collections.$inferInsert;
+export type CollectionStatus = "active" | "hidden";
+
+/**
  * Sellable card products managed by admin. `slug` is the stable id stored on
  * gift cards as designId. `image` is a data URL (front art); `back` is the CSS
  * gradient for the personalized back face. status: active | soldout | delisted.
+ * `collectionId` links the card to its collection.
  */
 export const products = pgTable(
   "products",
   {
     id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    collectionId: varchar("collection_id", { length: 36 }),
     slug: varchar("slug", { length: 48 }).notNull(),
     name: varchar("name", { length: 120 }).notNull(),
     priceMinor: integer("price_minor").notNull(),

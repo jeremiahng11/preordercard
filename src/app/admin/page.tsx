@@ -76,6 +76,9 @@ function Shell({ children, showNav }: { children: React.ReactNode; showNav?: boo
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Gift Card Admin</h1>
           {showNav && (
             <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+              <Link href="/admin/collections" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
+                Collections
+              </Link>
               <Link href="/admin/products" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
                 Products
               </Link>

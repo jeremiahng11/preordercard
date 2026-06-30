@@ -13,6 +13,15 @@ export type StoreProduct = {
   status: string; // active | soldout | delisted
 };
 
+export type StoreCollection = {
+  id: string; // collection slug
+  name: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  cards: StoreProduct[];
+};
+
 function fmtPrice(minor: number, currency: string): string {
   const sym = currency === "SGD" ? "S$" : currency + " ";
   return sym + (minor / 100).toFixed(2);
@@ -203,7 +212,7 @@ function GiftCard({ product, recipient, float, interactive, thumb }: {
   );
 }
 
-export default function CinnamorollGiftFlow({ products }: { products: StoreProduct[] }) {
+export default function CinnamorollGiftFlow({ collections }: { collections: StoreCollection[] }) {
   const [step, setStep] = useState<string>("product");
   const [overlay, setOverlay] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -214,7 +223,8 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
     sender: "",
     buyerEmail: "",
     message: "Hope this makes your day a little cuter! 🎀",
-    design: products[0]?.id ?? "",
+    collection: collections[0]?.id ?? "",
+    design: collections[0]?.cards[0]?.id ?? "",
   });
   const [pay, setPay] = useState("paynow");
   const [redeemInput, setRedeemInput] = useState("");
@@ -234,10 +244,15 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
   const validEmail = emailRe.test(form.email);
   const validBuyer = emailRe.test(form.buyerEmail);
   const detailsOk = form.recipient.trim() && validEmail && form.sender.trim() && validBuyer;
-  const selected = products.find((d) => d.id === form.design) ?? products[0];
+  const selectedCollection = collections.find((c) => c.id === form.collection) ?? collections[0];
+  const cards = selectedCollection?.cards ?? [];
+  const selected = cards.find((d) => d.id === form.design) ?? cards[0];
   const soldOut = selected ? selected.status !== "active" : true;
   const priceLabel = selected ? fmtPrice(selected.priceMinor, selected.currency) : "";
   const stepIdx = ({ product: 0, details: 0, review: 1, success: 2 } as Record<string, number>)[step] ?? 0;
+
+  const pickCollection = (c: StoreCollection) =>
+    setForm({ ...form, collection: c.id, design: c.cards[0]?.id ?? "" });
 
   const copy = () => {
     if (navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
@@ -362,21 +377,41 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
           <div className="sg-fadein">
             <GiftCard product={selected} recipient={form.recipient} float interactive />
             <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>
-              Cinnamoroll · <span style={{ color: "var(--rose)" }}>{selected.name}</span> — tap the card to see the back
+              {selectedCollection.name} · <span style={{ color: "var(--rose)" }}>{selected.name}</span> — tap the card to see the back
             </div>
+
+            {collections.length > 1 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
+                {collections.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => pickCollection(c)}
+                    className="sg-btn"
+                    style={{
+                      flex: "0 0 auto",
+                      padding: "8px 14px",
+                      fontSize: 13,
+                      background: form.collection === c.id ? "linear-gradient(135deg,var(--rose),var(--lilac))" : "var(--soft)",
+                      color: form.collection === c.id ? "#fff" : "var(--ink)",
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div style={{ marginTop: 16 }}>
-              <div className="sg-eyebrow">Limited Edition · Cinnamoroll</div>
-              <h1 className="sg-h1">Cinnamoroll Visa Platinum</h1>
-              <p className="sg-lead" style={{ marginTop: 8 }}>
-                Give the prettiest way to pay. A collectible Visa Platinum debit card, sent as a gift
-                with a one-time code your friend redeems in the Aleta app in seconds.
-              </p>
+              {selectedCollection.eyebrow && <div className="sg-eyebrow">{selectedCollection.eyebrow}</div>}
+              <h1 className="sg-h1">{selectedCollection.title}</h1>
+              {selectedCollection.description && (
+                <p className="sg-lead" style={{ marginTop: 8 }}>{selectedCollection.description}</p>
+              )}
             </div>
 
-            <label className="sg-label" style={{ marginTop: 16 }}>Choose a design — {products.length} to collect</label>
+            <label className="sg-label" style={{ marginTop: 16 }}>Choose a design — {cards.length} to collect</label>
             <div className="sg-swatches">
-              {products.map((d) => (
+              {cards.map((d) => (
                 <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
                   <img src={d.img} alt={d.name} />
                   {form.design === d.id && <span className="sg-sw-tick">✓</span>}
@@ -434,7 +469,7 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
 
               <label className="sg-label">Design</label>
               <div className="sg-swatches">
-                {products.map((d) => (
+                {cards.map((d) => (
                   <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
                     <img src={d.img} alt={d.name} />
                     {form.design === d.id && <span className="sg-sw-tick">✓</span>}
@@ -459,8 +494,8 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <div style={{ width: 96, flexShrink: 0, borderRadius: 12, overflow: "hidden" }}><GiftCard product={selected} thumb /></div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 14, fontFamily: "'Baloo 2'" }}>Cinnamoroll Visa Platinum</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{selected.name} · Limited Edition</div>
+                  <div style={{ fontWeight: 800, fontSize: 14, fontFamily: "'Baloo 2'" }}>{selectedCollection.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{selected.name} · {selectedCollection.name}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginTop: 4 }}>To {form.recipient || "—"} · {form.email}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Receipt to {form.buyerEmail}</div>
                 </div>

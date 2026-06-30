@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveBaseUrl } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
  */
 
 function resultPageUrl(req: NextRequest, params: Record<string, string | undefined>) {
-  const url = new URL("/payment/result", req.nextUrl.origin);
+  const url = new URL("/payment/result", resolveBaseUrl(req));
   for (const [k, v] of Object.entries(params)) {
     if (v) url.searchParams.set(k, v);
   }

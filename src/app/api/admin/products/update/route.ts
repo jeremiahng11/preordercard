@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const id = typeof body.id === "string" ? body.id : "";
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const patch: { name?: string; priceMinor?: number; image?: string; back?: string } = {};
+  const patch: { name?: string; priceMinor?: number; image?: string; back?: string; collectionId?: string | null } = {};
 
   if (body.name !== undefined) {
     const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
@@ -44,6 +44,9 @@ export async function POST(req: NextRequest) {
     patch.image = body.image;
   }
   if (typeof body.back === "string" && body.back.trim()) patch.back = body.back.trim();
+  if (body.collectionId !== undefined) {
+    patch.collectionId = typeof body.collectionId === "string" && body.collectionId ? body.collectionId : null;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

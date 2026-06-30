@@ -48,6 +48,7 @@ export interface CreateProductInput {
   currency?: string;
   image: string; // data URL
   back?: string;
+  collectionId?: string | null;
 }
 
 export async function createProduct(input: CreateProductInput): Promise<Product> {
@@ -65,6 +66,7 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
           currency: input.currency ?? "SGD",
           image: input.image,
           back: input.back || DEFAULT_BACK,
+          collectionId: input.collectionId ?? null,
           status: "active",
         })
         .returning();
@@ -82,6 +84,7 @@ export interface UpdateProductInput {
   priceMinor?: number;
   image?: string;
   back?: string;
+  collectionId?: string | null;
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput): Promise<Product | null> {
@@ -91,6 +94,7 @@ export async function updateProduct(id: string, input: UpdateProductInput): Prom
   if (input.priceMinor !== undefined) patch.priceMinor = input.priceMinor;
   if (input.image !== undefined) patch.image = input.image;
   if (input.back !== undefined) patch.back = input.back;
+  if (input.collectionId !== undefined) patch.collectionId = input.collectionId;
   const [row] = await db.update(products).set(patch).where(eq(products.id, id)).returning();
   return row ?? null;
 }

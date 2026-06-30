@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const baseUrl = resolveBaseUrl(req.nextUrl.origin);
+  const baseUrl = resolveBaseUrl(req);
   const merOrderId = generateMerOrderId();
 
   const order: OrderRequest = {

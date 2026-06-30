@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "PayNow is not configured", detail: (e as Error).message }, { status: 500 });
   }
 
-  const baseUrl = resolveBaseUrl(req.nextUrl.origin);
+  const baseUrl = resolveBaseUrl(req);
   const merOrderId = generateMerOrderId();
 
   try {
