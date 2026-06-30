@@ -1,0 +1,15 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # For local webhook/redirect testing, point this at a tunnel (e.g. ngrok).
+      # - APP_BASE_URL=https://<your-tunnel>.ngrok.app
+    restart: unless-stopped
