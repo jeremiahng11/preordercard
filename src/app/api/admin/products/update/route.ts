@@ -23,7 +23,15 @@ export async function POST(req: NextRequest) {
   const id = typeof body.id === "string" ? body.id : "";
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const patch: { name?: string; priceMinor?: number; image?: string; back?: string; collectionId?: string | null } = {};
+  const patch: {
+    name?: string;
+    priceMinor?: number;
+    image?: string;
+    back?: string;
+    collectionId?: string | null;
+    comingSoon?: boolean;
+    comingSoonDate?: string | null;
+  } = {};
 
   if (body.name !== undefined) {
     const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
@@ -46,6 +54,13 @@ export async function POST(req: NextRequest) {
   if (typeof body.back === "string" && body.back.trim()) patch.back = body.back.trim();
   if (body.collectionId !== undefined) {
     patch.collectionId = typeof body.collectionId === "string" && body.collectionId ? body.collectionId : null;
+  }
+  if (body.comingSoon !== undefined) patch.comingSoon = body.comingSoon === true;
+  if (body.comingSoonDate !== undefined) {
+    patch.comingSoonDate =
+      typeof body.comingSoonDate === "string" && body.comingSoonDate.trim()
+        ? body.comingSoonDate.trim().slice(0, 40)
+        : null;
   }
 
   if (Object.keys(patch).length === 0) {

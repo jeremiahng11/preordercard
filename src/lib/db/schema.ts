@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, pgTable, timestamp, uniqueIndex, varchar, text } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, timestamp, uniqueIndex, varchar, text } from "drizzle-orm/pg-core";
 
 /**
  * One row per purchased gift card. The lifecycle:
@@ -89,6 +89,8 @@ export const products = pgTable(
     image: text("image").notNull(), // data URL of the front artwork
     back: text("back").notNull().default("linear-gradient(140deg,#BFE3FB,#E9D4F0 55%,#FBD3E4)"),
     status: varchar("status", { length: 16 }).notNull().default("active"),
+    comingSoon: boolean("coming_soon").notNull().default(false),
+    comingSoonDate: varchar("coming_soon_date", { length: 40 }),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

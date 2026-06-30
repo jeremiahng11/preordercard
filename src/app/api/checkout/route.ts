@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
   if (!product) {
     return NextResponse.json({ error: "Unknown card" }, { status: 400 });
   }
+  if (product.comingSoon) {
+    return NextResponse.json({ error: "This card isn't available for purchase yet" }, { status: 409 });
+  }
   if (!isPurchasable(product)) {
     return NextResponse.json({ error: "This card is no longer available" }, { status: 409 });
   }

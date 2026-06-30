@@ -11,7 +11,19 @@ export type StoreProduct = {
   priceMinor: number;
   currency: string;
   status: string; // active | soldout | delisted
+  comingSoon: boolean;
+  comingSoonDate: string | null;
 };
+
+/** Format a coming-soon date for display (YYYY-MM-DD → "1 Aug 2026"), else raw. */
+function fmtComingSoon(d: string | null | undefined): string {
+  if (!d) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+  if (!m) return d;
+  const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(date.getTime())) return d;
+  return date.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+}
 
 export type StoreCollection = {
   id: string; // collection slug
@@ -248,6 +260,9 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
   const cards = selectedCollection?.cards ?? [];
   const selected = cards.find((d) => d.id === form.design) ?? cards[0];
   const soldOut = selected ? selected.status !== "active" : true;
+  const comingSoon = !!selected?.comingSoon;
+  const comingSoonLabel = fmtComingSoon(selected?.comingSoonDate);
+  const unavailable = soldOut || comingSoon;
   const priceLabel = selected ? fmtPrice(selected.priceMinor, selected.currency) : "";
   const stepIdx = ({ product: 0, details: 0, review: 1, success: 2 } as Record<string, number>)[step] ?? 0;
 
@@ -415,7 +430,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
                 <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
                   <img src={d.img} alt={d.name} />
                   {form.design === d.id && <span className="sg-sw-tick">✓</span>}
-                  <div className="sg-sw-name">{d.name}{d.status !== "active" ? " · Sold out" : ""}</div>
+                  <div className="sg-sw-name">{d.name}{d.comingSoon ? " · Coming Soon" : d.status !== "active" ? " · Sold out" : ""}</div>
                 </div>
               ))}
             </div>
@@ -432,12 +447,26 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>One-time gift price</div>
                   <div className="sg-row" style={{ gap: 8 }}><span className="sg-price">{priceLabel}</span></div>
                 </div>
-                {soldOut && <div style={{ fontSize: 11, fontWeight: 800, color: "var(--rose)", background: "#FFF0F5", padding: "5px 10px", borderRadius: 99 }}>SOLD OUT</div>}
+                {comingSoon ? (
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#6B39E8", background: "#EEE9FF", padding: "5px 10px", borderRadius: 99 }}>COMING SOON</div>
+                ) : soldOut ? (
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--rose)", background: "#FFF0F5", padding: "5px 10px", borderRadius: 99 }}>SOLD OUT</div>
+                ) : null}
               </div>
-              <button className="sg-btn sg-btn-primary" style={{ marginTop: 14 }} disabled={soldOut} onClick={() => setStep("details")}>
-                {soldOut ? "Sold out" : `Send ${selected.name} as a gift →`}
+              <button className="sg-btn sg-btn-primary" style={{ marginTop: 14 }} disabled={unavailable} onClick={() => setStep("details")}>
+                {comingSoon
+                  ? `Coming Soon${comingSoonLabel ? " · " + comingSoonLabel : ""}`
+                  : soldOut
+                    ? "Sold out"
+                    : `Send ${selected.name} as a gift →`}
               </button>
-              <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>Limited edition · Price incl. GST</p>
+              <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>
+                {comingSoon
+                  ? comingSoonLabel
+                    ? `Available from ${comingSoonLabel}`
+                    : "Available soon — check back shortly"
+                  : "Limited edition · Price incl. GST"}
+              </p>
             </div>
           </div>
         )}
@@ -473,7 +502,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
                   <div key={d.id} className={"sg-sw" + (form.design === d.id ? " sel" : "")} onClick={() => setForm({ ...form, design: d.id })} style={{ opacity: d.status === "active" ? 1 : 0.6 }}>
                     <img src={d.img} alt={d.name} />
                     {form.design === d.id && <span className="sg-sw-tick">✓</span>}
-                    <div className="sg-sw-name">{d.name}{d.status !== "active" ? " · Sold out" : ""}</div>
+                    <div className="sg-sw-name">{d.name}{d.comingSoon ? " · Coming Soon" : d.status !== "active" ? " · Sold out" : ""}</div>
                   </div>
                 ))}
               </div>
@@ -481,7 +510,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button className="sg-btn sg-btn-ghost" style={{ flex: ".7" }} onClick={() => setStep("product")}>Back</button>
-              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={!detailsOk || soldOut} onClick={() => setStep("review")}>Continue to pay</button>
+              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={!detailsOk || unavailable} onClick={() => setStep("review")}>Continue to pay</button>
             </div>
           </div>
         )}
@@ -523,7 +552,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button className="sg-btn sg-btn-ghost" style={{ flex: ".7" }} onClick={() => setStep("details")}>Back</button>
-              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={paying || soldOut} onClick={handlePay}>{paying ? "Redirecting…" : pay === "card" ? `Pay ${priceLabel} with card →` : `Pay ${priceLabel}`}</button>
+              <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={paying || unavailable} onClick={handlePay}>{paying ? "Redirecting…" : pay === "card" ? `Pay ${priceLabel} with card →` : `Pay ${priceLabel}`}</button>
             </div>
             {payError && <p className="sg-hint" style={{ textAlign: "center", marginTop: 10, color: "var(--rose)" }}>{payError}</p>}
             <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>🔒 Secured by Aleta Planet · Card payments use the sandbox gateway</p>

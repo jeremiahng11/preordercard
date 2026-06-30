@@ -13,6 +13,8 @@ export type ProductView = {
   back: string;
   status: string;
   collectionId: string | null;
+  comingSoon: boolean;
+  comingSoonDate: string | null;
 };
 
 export type CollectionOption = { id: string; name: string };
@@ -99,12 +101,21 @@ function AddProduct({
 }: {
   busy: boolean;
   collections: CollectionOption[];
-  onCreate: (p: { name: string; priceMinor: number; image: string; collectionId: string }) => Promise<boolean>;
+  onCreate: (p: {
+    name: string;
+    priceMinor: number;
+    image: string;
+    collectionId: string;
+    comingSoon: boolean;
+    comingSoonDate: string | null;
+  }) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("18.00");
   const [collectionId, setCollectionId] = useState(collections[0]?.id ?? "");
+  const [comingSoon, setComingSoon] = useState(false);
+  const [comingSoonDate, setComingSoonDate] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -116,10 +127,19 @@ function AddProduct({
   async function submit() {
     const priceMinor = Math.round(parseFloat(price) * 100);
     if (!name.trim() || !image || !collectionId || !Number.isFinite(priceMinor) || priceMinor <= 0) return;
-    const ok = await onCreate({ name: name.trim(), priceMinor, image, collectionId });
+    const ok = await onCreate({
+      name: name.trim(),
+      priceMinor,
+      image,
+      collectionId,
+      comingSoon,
+      comingSoonDate: comingSoon && comingSoonDate ? comingSoonDate : null,
+    });
     if (ok) {
       setName("");
       setPrice("18.00");
+      setComingSoon(false);
+      setComingSoonDate("");
       setImage(null);
       setOpen(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -152,6 +172,7 @@ function AddProduct({
           <input style={input} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
           <Label>Card image (front artwork — landscape)</Label>
           <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ color: "#c4cbd6", fontSize: 13 }} />
+          <ComingSoon comingSoon={comingSoon} setComingSoon={setComingSoon} date={comingSoonDate} setDate={setComingSoonDate} />
           <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
             <button onClick={submit} disabled={busy || !name.trim() || !image} style={primaryBtn}>
               Create
@@ -181,6 +202,8 @@ function ProductRow({
   const [name, setName] = useState(product.name);
   const [price, setPrice] = useState(dollars(product.priceMinor));
   const [collectionId, setCollectionId] = useState(product.collectionId ?? "");
+  const [comingSoon, setComingSoon] = useState(product.comingSoon);
+  const [comingSoonDate, setComingSoonDate] = useState(product.comingSoonDate ?? "");
   const [image, setImage] = useState<string | null>(null);
   const s = STATUS_STYLE[product.status] ?? { label: product.status, bg: "#2a2e36", fg: "#aab2c0" };
   const collName = collections.find((c) => c.id === product.collectionId)?.name ?? "—";
@@ -192,7 +215,14 @@ function ProductRow({
 
   async function save() {
     const priceMinor = Math.round(parseFloat(price) * 100);
-    const payload: Record<string, unknown> = { id: product.id, name: name.trim(), priceMinor, collectionId };
+    const payload: Record<string, unknown> = {
+      id: product.id,
+      name: name.trim(),
+      priceMinor,
+      collectionId,
+      comingSoon,
+      comingSoonDate: comingSoon && comingSoonDate ? comingSoonDate : null,
+    };
     if (image) payload.image = image;
     const ok = await call("/api/admin/products/update", payload);
     if (ok) {
@@ -220,6 +250,7 @@ function ProductRow({
               <input style={input} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
               <Label>Replace image (optional)</Label>
               <input type="file" accept="image/*" onChange={onFile} style={{ color: "#c4cbd6", fontSize: 13 }} />
+              <ComingSoon comingSoon={comingSoon} setComingSoon={setComingSoon} date={comingSoonDate} setDate={setComingSoonDate} />
               <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                 <button onClick={save} disabled={busy} style={primaryBtn}>
                   Save
@@ -231,11 +262,16 @@ function ProductRow({
             </>
           ) : (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{product.name}</div>
                 <span style={{ background: s.bg, color: s.fg, padding: "3px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
                   {s.label}
                 </span>
+                {product.comingSoon && (
+                  <span style={{ background: "#332842", color: "#c9aef4", padding: "3px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
+                    Coming soon{product.comingSoonDate ? ` · ${product.comingSoonDate}` : ""}
+                  </span>
+                )}
               </div>
               <div style={{ color: "#aeb6c2", fontSize: 14, marginTop: 4 }}>
                 {product.currency} {dollars(product.priceMinor)} · {collName}
@@ -300,6 +336,33 @@ const input: React.CSSProperties = {
 };
 function Label({ children }: { children: React.ReactNode }) {
   return <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#9aa3b2", margin: "8px 0 4px" }}>{children}</label>;
+}
+
+function ComingSoon({
+  comingSoon,
+  setComingSoon,
+  date,
+  setDate,
+}: {
+  comingSoon: boolean;
+  setComingSoon: (v: boolean) => void;
+  date: string;
+  setDate: (v: string) => void;
+}) {
+  return (
+    <div style={{ marginTop: 10, padding: "10px 12px", border: "1px solid #2d333f", borderRadius: 9, background: "#0f1115" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+        <input type="checkbox" checked={comingSoon} onChange={(e) => setComingSoon(e.target.checked)} />
+        Coming soon (visible but not purchasable)
+      </label>
+      {comingSoon && (
+        <div style={{ marginTop: 8 }}>
+          <Label>Available from (optional — shown to customers)</Label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={input} />
+        </div>
+      )}
+    </div>
+  );
 }
 const primaryBtn: React.CSSProperties = {
   padding: "10px 16px",

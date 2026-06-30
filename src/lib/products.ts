@@ -49,6 +49,8 @@ export interface CreateProductInput {
   image: string; // data URL
   back?: string;
   collectionId?: string | null;
+  comingSoon?: boolean;
+  comingSoonDate?: string | null;
 }
 
 export async function createProduct(input: CreateProductInput): Promise<Product> {
@@ -67,6 +69,8 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
           image: input.image,
           back: input.back || DEFAULT_BACK,
           collectionId: input.collectionId ?? null,
+          comingSoon: input.comingSoon ?? false,
+          comingSoonDate: input.comingSoonDate ?? null,
           status: "active",
         })
         .returning();
@@ -85,6 +89,8 @@ export interface UpdateProductInput {
   image?: string;
   back?: string;
   collectionId?: string | null;
+  comingSoon?: boolean;
+  comingSoonDate?: string | null;
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput): Promise<Product | null> {
@@ -95,6 +101,8 @@ export async function updateProduct(id: string, input: UpdateProductInput): Prom
   if (input.image !== undefined) patch.image = input.image;
   if (input.back !== undefined) patch.back = input.back;
   if (input.collectionId !== undefined) patch.collectionId = input.collectionId;
+  if (input.comingSoon !== undefined) patch.comingSoon = input.comingSoon;
+  if (input.comingSoonDate !== undefined) patch.comingSoonDate = input.comingSoonDate;
   const [row] = await db.update(products).set(patch).where(eq(products.id, id)).returning();
   return row ?? null;
 }
@@ -114,5 +122,5 @@ export async function setProductStatus(
 
 /** True when a product can currently be purchased. */
 export function isPurchasable(p: Product): boolean {
-  return p.status === "active";
+  return p.status === "active" && !p.comingSoon;
 }

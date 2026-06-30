@@ -19,6 +19,8 @@ export async function GET() {
         priceMinor: p.priceMinor,
         currency: p.currency,
         status: p.status,
+        comingSoon: p.comingSoon,
+        comingSoonDate: p.comingSoonDate ?? null,
       })),
     });
   } catch (e) {

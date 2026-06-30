@@ -29,6 +29,8 @@ export default async function Home() {
               priceMinor: p.priceMinor,
               currency: p.currency,
               status: p.status,
+              comingSoon: p.comingSoon,
+              comingSoonDate: p.comingSoonDate ?? null,
             })),
         }))
         .filter((c) => c.cards.length > 0);

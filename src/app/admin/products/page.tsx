@@ -30,6 +30,8 @@ export default async function AdminProductsPage() {
         back: p.back,
         status: p.status,
         collectionId: p.collectionId ?? null,
+        comingSoon: p.comingSoon,
+        comingSoonDate: p.comingSoonDate ?? null,
       }));
     } catch (e) {
       dbError = (e as Error).message;
