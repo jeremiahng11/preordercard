@@ -199,3 +199,50 @@ export function createOrder(cfg: AletaConfig, req: OrderRequest): Promise<OrderR
 export function inquiry(cfg: AletaConfig, merTransId: string): Promise<unknown> {
   return callEndpoint(cfg, "inquiry", { merTransId });
 }
+
+interface InquiryResponse {
+  result?: AletaResult;
+  data?: {
+    apTransId?: string;
+    paymentResult?: AletaResult;
+    captureList?: Array<{ merCaptureId?: string; merCaptureAmt?: string }>;
+  };
+}
+
+interface RefundResponse {
+  result: AletaResult;
+  data?: { paymentResult?: AletaResult; merRefundId?: string; merRefundAmt?: string };
+}
+
+/**
+ * Refund an auto-captured order. The refund API works off a capture id, so we
+ * first inquire the order to find its merCaptureId, then issue the refund.
+ * Returns { ok, resultMsg } — ok=true only when Aleta accepts the refund.
+ */
+export async function refundOrder(
+  cfg: AletaConfig,
+  merOrderId: string,
+  amountMinor: number,
+): Promise<{ ok: boolean; resultCode?: string; resultMsg?: string; merRefundId?: string }> {
+  const inq = (await callEndpoint<InquiryResponse>(cfg, "inquiry", { merTransId: merOrderId })) ?? {};
+  const merCaptureId = inq.data?.captureList?.find((c) => c.merCaptureId)?.merCaptureId;
+  if (!merCaptureId) {
+    return { ok: false, resultMsg: "No captured transaction found to refund (order not captured)." };
+  }
+
+  const merRefundId = generateMerOrderId("RF");
+  const res = await callEndpoint<RefundResponse>(cfg, "refund", {
+    merCaptureId,
+    merRefundId,
+    merRefundAmt: String(amountMinor),
+  });
+
+  const status = res.result?.resultStatus ?? res.data?.paymentResult?.resultStatus;
+  const ok = status === "S";
+  return {
+    ok,
+    resultCode: res.result?.resultCode ?? res.data?.paymentResult?.resultCode,
+    resultMsg: res.result?.resultMsg ?? res.data?.paymentResult?.resultMsg,
+    merRefundId,
+  };
+}

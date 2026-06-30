@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildSignContent, getAletaConfig, verifySignature } from "@/lib/aleta";
+import { isDbConfigured } from "@/lib/db";
+import { activateByMerOrderId } from "@/lib/giftcards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,13 +54,34 @@ export async function POST(req: NextRequest) {
     | { apTransId?: string; transType?: string; merOrderId?: string; paymentResult?: { resultCode?: string } }
     | null;
 
+  const resultCode = info?.paymentResult?.resultCode;
+
   console.log("[aleta webhook]", {
     verified,
     transType: info?.transType,
     merOrderId: info?.merOrderId,
     apTransId: info?.apTransId,
-    resultCode: info?.paymentResult?.resultCode,
+    resultCode,
   });
+
+  // Activate the gift card once the order's payment succeeds. We only trust the
+  // webhook (server-to-server) — never the browser redirect — for activation.
+  // If a public key is configured we require a valid signature.
+  const signatureOk = verified !== false;
+  if (
+    signatureOk &&
+    info?.transType === "ORDER" &&
+    resultCode === "SUCCESS" &&
+    info.merOrderId &&
+    isDbConfigured()
+  ) {
+    try {
+      await activateByMerOrderId(info.merOrderId, info.apTransId);
+      console.log("[aleta webhook] activated", info.merOrderId);
+    } catch (e) {
+      console.error("[aleta webhook] activation failed:", (e as Error).message);
+    }
+  }
 
   // Always 200 to acknowledge receipt.
   return NextResponse.json({ received: true });

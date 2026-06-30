@@ -14,10 +14,26 @@ app never handles a raw card number.
 - On completion Aleta redirects back to `/api/payment-return` (→ `/payment/result`)
   and also calls the `/api/webhook` notification endpoint.
 
+It also issues a **single-use redemption code** per purchase and exposes a
+**Redemption API** for the Aleta Adventure app to validate/redeem codes — see
+[`docs/REDEMPTION_API.md`](docs/REDEMPTION_API.md).
+
 ## Tech
 
-Next.js 15 (App Router) · React 19 · TypeScript (strict) · Node `crypto` for
-RSA-SHA256 signing · standalone output for a small Docker image.
+Next.js 15 (App Router) · React 19 · TypeScript (strict) · Postgres + Drizzle ORM ·
+Node `crypto` for RSA-SHA256 signing · standalone output for a small Docker image.
+
+## Gift code lifecycle
+
+```
+checkout  →  PENDING   (code generated + stored, not redeemable)
+webhook   →  ACTIVE    (Aleta confirms payment SUCCESS → redeemable once)
+/api/redeem → REDEEMED (Aleta Adventure app burns it, atomically)
+```
+
+Activation only happens on the server-to-server **webhook** (or an Aleta
+**inquiry** fallback) — never the browser redirect. The single-use guarantee is a
+conditional `UPDATE ... WHERE status='active'`, so concurrent redeems can't double-spend.
 
 ## Payment flow (spec §1, Option 1 — hosted page)
 
@@ -65,7 +81,32 @@ npm run dev            # http://localhost:3000
 | `ALETA_SERVICE` | – | `VISA` (default) or `MASTERCARD`. |
 | `ALETA_PRIVATE_KEY` | ✅ | Your RSA private key (PKCS#8 base64, one line, no PEM header). |
 | `ALETA_PUBLIC_KEY` | – | Aleta's public key, to verify callbacks. |
+| `DATABASE_URL` | ✅ | Postgres connection string (stores gift cards). Migrations auto-run on boot. |
+| `REDEEM_API_KEY` | ✅ | Shared secret for the redemption API (`x-api-key`). |
+| `ADMIN_PASSWORD` | ✅ | Password for the `/admin` dashboard. |
 | `APP_BASE_URL` | – | Public base URL for callbacks. Auto-detected on Railway. |
+
+## Admin dashboard
+
+`/admin` (password from `ADMIN_PASSWORD`) lets staff:
+
+- See every purchased code with **purchase date/time**, recipient, amount, and
+  **status** — Inactive (unpaid), Active, Redeemed, Revoked, Refunded.
+- **Revoke** a code (active/inactive) so it can no longer be redeemed.
+- **Refund** an active/redeemed card — issues an Aleta refund, then marks it Refunded.
+- View the **API docs** to hand to the Aleta Adventure app developers (`/admin/api-docs`).
+
+### Database
+
+Uses Postgres via Drizzle ORM. Migrations live in [`drizzle/`](drizzle/) and are
+applied automatically at server startup (see [`src/instrumentation.ts`](src/instrumentation.ts)).
+Local commands:
+
+```bash
+npm run db:generate   # regenerate migration SQL from src/lib/db/schema.ts
+npm run db:migrate    # apply migrations to DATABASE_URL
+npm run db:studio     # browse data in Drizzle Studio
+```
 
 See [`.env.example`](.env.example) for key-generation commands.
 
@@ -86,10 +127,12 @@ This repo includes a multi-stage [`Dockerfile`](Dockerfile) and
 [`railway.json`](railway.json) (Dockerfile builder).
 
 1. Create a new Railway project from this repo (it auto-detects the Dockerfile).
-2. Add the environment variables above in the service **Variables** tab.
-3. Railway injects `PORT` and `RAILWAY_PUBLIC_DOMAIN` — `APP_BASE_URL` is derived
+2. Add a **Postgres** plugin, then set `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+3. Add the other environment variables above in the service **Variables** tab
+   (including `REDEEM_API_KEY`).
+4. Railway injects `PORT` and `RAILWAY_PUBLIC_DOMAIN` — `APP_BASE_URL` is derived
    automatically, or set it explicitly to your custom domain.
-4. Deploy. Visit the generated URL.
+5. Deploy. Migrations run on boot; visit the generated URL.
 
 Run the production image locally with Docker:
 
@@ -106,16 +149,25 @@ src/
     layout.tsx, globals.css
     payment/result/page.tsx   Post-payment landing (success/pending/fail)
     api/
-      checkout/route.ts       Create order → return paymentLink
+      checkout/route.ts       Create order + persist PENDING card → paymentLink
       payment-return/route.ts frontUrl handler (GET/POST) → result page
-      webhook/route.ts        Async notification (verify + ack)
+      webhook/route.ts        Async notification (verify + activate card)
       inquiry/route.ts        Query a transaction
+      gift/route.ts           Result-page code lookup (+ inquiry fallback)
+      redeem/route.ts         POST redeem (single use) — app developers
+      redeem/validate/route.ts GET non-mutating code check — app developers
   components/
     CinnamorollGiftFlow.tsx   The ported UI (client component)
+  instrumentation.ts          Runs DB migrations on startup
   lib/
     aleta.ts                  Signing, verification, order/inquiry client
+    auth.ts                   Partner API-key check (redemption)
     config.ts                 Pricing, currency, base-URL resolution
+    giftcards.ts              Create / activate / redeem gift cards
+    db/                       Drizzle schema + client
     assets.ts                 Embedded base64 card artwork
+drizzle/                      Generated SQL migrations
+docs/REDEMPTION_API.md        API reference for the Aleta Adventure app
 ```
 
 ## License

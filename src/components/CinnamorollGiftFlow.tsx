@@ -248,14 +248,21 @@ export default function CinnamorollGiftFlow() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ design: form.design, buyerEmail: form.buyerEmail }),
+        body: JSON.stringify({
+          design: form.design,
+          buyerEmail: form.buyerEmail,
+          recipient: form.recipient,
+          recipientEmail: form.email,
+          sender: form.sender,
+          message: form.message,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.paymentLink) {
         throw new Error(data.error || data.resultMsg || "Could not start the payment. Please try again.");
       }
       try {
-        localStorage.setItem("gac:order:" + data.merOrderId, JSON.stringify({ form, code }));
+        localStorage.setItem("gac:order:" + data.merOrderId, JSON.stringify({ form }));
       } catch {
         /* localStorage may be unavailable */
       }

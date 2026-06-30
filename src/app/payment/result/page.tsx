@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CARD_IMG, ADV_LOGO } from "@/lib/assets";
 
@@ -19,7 +19,7 @@ type StoredOrder = {
     message: string;
     design: string;
   };
-  code: string;
+  code?: string;
 };
 
 const wrap: React.CSSProperties = {
@@ -77,11 +77,13 @@ function isPending(code: string | null) {
   return code === "RECEIVE" || code === "PAYING" || code === null;
 }
 
-function randomCode() {
-  const ch = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const blk = () => Array.from({ length: 4 }, () => ch[Math.floor(Math.random() * ch.length)]).join("");
-  return "CNR-" + blk() + "-" + blk();
-}
+type Gift = {
+  status: string;
+  paid: boolean;
+  code: string | null;
+  design: string;
+  recipientName: string | null;
+};
 
 function ResultInner() {
   const params = useSearchParams();
@@ -89,31 +91,61 @@ function ResultInner() {
   const merOrderId = params.get("merOrderId");
 
   const [order, setOrder] = useState<StoredOrder | null>(null);
+  const [gift, setGift] = useState<Gift | null>(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const fallbackCode = useMemo(randomCode, []);
 
   useEffect(() => {
-    if (!merOrderId) return;
     try {
-      const raw = localStorage.getItem("gac:order:" + merOrderId);
-      if (raw) setOrder(JSON.parse(raw) as StoredOrder);
+      if (merOrderId) {
+        const raw = localStorage.getItem("gac:order:" + merOrderId);
+        if (raw) setOrder(JSON.parse(raw) as StoredOrder);
+      }
     } catch {
       /* ignore */
     }
+
+    let cancelled = false;
+    (async () => {
+      if (!merOrderId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch("/api/gift?merOrderId=" + encodeURIComponent(merOrderId));
+        if (res.ok) {
+          const data = (await res.json()) as Gift;
+          if (!cancelled) setGift(data);
+        }
+      } catch {
+        /* best effort */
+      }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [merOrderId]);
 
-  const design = order?.form.design ?? "pinkcloud";
+  const design = gift?.design ?? order?.form.design ?? "pinkcloud";
   const designMeta = DESIGNS[design] ?? DESIGNS.pinkcloud;
-  const code = order?.code ?? fallbackCode;
+  const recipientName = gift?.recipientName ?? order?.form.recipient ?? "";
+  // Source of truth is the server-issued code; never the client-side localStorage copy.
+  const code = gift?.code ?? "";
 
   const copy = () => {
+    if (!code) return;
     if (navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
 
-  const success = isSuccess(resultCode);
-  const pending = isPending(resultCode);
+  // The server's `paid` flag is authoritative; fall back to the redirect code
+  // only when we couldn't reach the server.
+  const serverPaid = gift?.paid === true;
+  const success = serverPaid || (!gift && isSuccess(resultCode));
+  const failed = !success && !loading && (resultCode === "FAIL" || resultCode === "CANCELLED");
+  const pending = !success && !failed;
 
   return (
     <div style={wrap}>
@@ -131,14 +163,8 @@ function ResultInner() {
               <div style={{ fontSize: 40 }}>🎉</div>
               <h1 style={h1}>Payment successful!</h1>
               <p style={{ ...lead, marginTop: 6 }}>
-                {order ? (
-                  <>
-                    We&apos;ve emailed <b style={{ color: "#2C2433" }}>{order.form.recipient || "your friend"}</b> their
-                    Cinnamoroll {designMeta.name} card.
-                  </>
-                ) : (
-                  <>Your Cinnamoroll {designMeta.name} card is on its way.</>
-                )}
+                We&apos;ve emailed <b style={{ color: "#2C2433" }}>{recipientName || "your friend"}</b> their
+                Cinnamoroll {designMeta.name} card.
               </p>
               <div style={{ margin: "16px auto 0", maxWidth: 280 }}>
                 <img
