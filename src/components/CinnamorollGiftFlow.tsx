@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, type ChangeEvent } from "react";
+import { useState, useMemo, useEffect, type ChangeEvent } from "react";
 import { ADV_LOGO } from "@/lib/assets";
 
 export type StoreProduct = {
@@ -221,6 +221,7 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
   const [redeemed, setRedeemed] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [paynow, setPaynow] = useState<{ merOrderId: string; qrImage: string; amount: number; currency: string } | null>(null);
 
   const code = useMemo(() => {
     const ch = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -244,29 +245,27 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
     setTimeout(() => setCopied(false), 1600);
   };
 
+  const giftPayload = () => ({
+    design: form.design,
+    buyerEmail: form.buyerEmail,
+    recipient: form.recipient,
+    recipientEmail: form.email,
+    sender: form.sender,
+    message: form.message,
+  });
+
   const handlePay = async () => {
-    if (pay !== "card") {
-      // PayNow remains a front-end demo; card payments go through Aleta Planet.
-      setStep("success");
-      return;
-    }
     setPaying(true);
     setPayError(null);
     try {
-      const res = await fetch("/api/checkout", {
+      const endpoint = pay === "card" ? "/api/checkout" : "/api/paynow/create";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          design: form.design,
-          buyerEmail: form.buyerEmail,
-          recipient: form.recipient,
-          recipientEmail: form.email,
-          sender: form.sender,
-          message: form.message,
-        }),
+        body: JSON.stringify(giftPayload()),
       });
       const data = await res.json();
-      if (!res.ok || !data.paymentLink) {
+      if (!res.ok) {
         const base = data.error || data.resultMsg || "Could not start the payment. Please try again.";
         throw new Error(data.detail ? `${base} — ${data.detail}` : base);
       }
@@ -275,12 +274,46 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
       } catch {
         /* localStorage may be unavailable */
       }
-      window.location.href = data.paymentLink as string;
+      if (pay === "card") {
+        if (!data.paymentLink) throw new Error("Could not start the payment. Please try again.");
+        window.location.href = data.paymentLink as string;
+      } else {
+        if (!data.qrImage) throw new Error("Could not generate the PayNow QR. Please try again.");
+        setPaynow({ merOrderId: data.merOrderId, qrImage: data.qrImage, amount: data.amount, currency: data.currency });
+        setPaying(false);
+      }
     } catch (e) {
       setPayError((e as Error).message);
       setPaying(false);
     }
   };
+
+  useEffect(() => {
+    if (!paynow) return;
+    let stop = false;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/paynow/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ merOrderId: paynow.merOrderId, gift: giftPayload() }),
+        });
+        const d = await res.json();
+        if (!stop && d.paid) {
+          window.location.href = "/payment/result?merOrderId=" + encodeURIComponent(paynow.merOrderId);
+        }
+      } catch {
+        /* keep polling */
+      }
+    };
+    poll();
+    const id = setInterval(poll, 3500);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paynow]);
 
   if (!selected) {
     return (
@@ -546,6 +579,27 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
                 <button className="sg-btn sg-btn-primary" style={{ marginTop: 18 }} onClick={() => { setOverlay(null); setRedeemed(false); }}>Go to my wallet</button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== PAYNOW QR OVERLAY ===== */}
+      {paynow && (
+        <div className="sg-overlay" onClick={() => setPaynow(null)}>
+          <div className="sg-sheet" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
+            <div className="sg-row" style={{ marginBottom: 14 }}>
+              <div style={{ fontWeight: 800, fontFamily: "'Baloo 2'", fontSize: 17 }}>Scan to PayNow</div>
+              <button className="sg-x" onClick={() => setPaynow(null)}>✕</button>
+            </div>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 16, display: "inline-block", border: "1px solid var(--line)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={paynow.qrImage} alt="PayNow QR" style={{ width: 240, height: 240, display: "block" }} />
+            </div>
+            <div className="sg-price" style={{ marginTop: 12 }}>{fmtPrice(paynow.amount, paynow.currency)}</div>
+            <p className="sg-lead" style={{ marginTop: 6, fontSize: 13 }}>
+              Open your bank app, scan this PayNow QR, and approve the payment.
+            </p>
+            <p className="sg-hint" style={{ marginTop: 10 }}>⏳ Waiting for payment… this updates automatically.</p>
           </div>
         </div>
       )}

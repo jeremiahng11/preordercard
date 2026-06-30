@@ -1,43 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAletaConfig, inquiry } from "@/lib/aleta";
-import { storeLinks } from "@/lib/config";
 import { isDbConfigured } from "@/lib/db";
-import { createActiveCard, getByMerOrderId } from "@/lib/giftcards";
-import { getProductBySlug } from "@/lib/products";
-import { sendGiftEmails } from "@/lib/email";
-import type { GiftCard } from "@/lib/db/schema";
+import { getByMerOrderId } from "@/lib/giftcards";
+import { cardView, finalizeOrder, type GiftInput } from "@/lib/finalize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function str(v: unknown, max: number): string | null {
-  return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
-}
-
-function view(card: GiftCard, image: string | null) {
-  const paid = card.status === "active" || card.status === "redeemed";
-  const { appStore, playStore } = storeLinks();
-  return {
-    merOrderId: card.merOrderId,
-    status: card.status,
-    paid,
-    code: paid ? card.code : null,
-    design: card.designId,
-    image,
-    productName: card.productName ?? null,
-    recipientName: card.recipientName ?? null,
-    amount: card.amountMinor,
-    currency: card.currency,
-    appStore,
-    playStore,
-  };
-}
-
 /**
- * Finalize a purchase after the payment redirect. Confirms SUCCESS via Aleta
- * inquiry, then creates the gift card + code (only on confirmation) and emails
- * the recipient and buyer. Idempotent: safe to call multiple times; emails are
- * sent only on first creation.
+ * Finalize a card (Visa/Mastercard) purchase after the payment redirect.
+ * Confirms SUCCESS via Aleta inquiry, then creates the gift card + code and
+ * emails both parties. Idempotent.
  *
  *   POST /api/confirm  { merOrderId, gift: { recipient, recipientEmail, sender, buyerEmail, message, design } }
  */
@@ -46,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
   }
 
-  let body: { merOrderId?: unknown; gift?: Record<string, unknown> };
+  let body: { merOrderId?: unknown; gift?: GiftInput };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -54,18 +27,12 @@ export async function POST(req: NextRequest) {
   }
 
   const merOrderId = typeof body.merOrderId === "string" ? body.merOrderId : "";
-  if (!merOrderId) {
-    return NextResponse.json({ error: "merOrderId is required" }, { status: 400 });
-  }
+  if (!merOrderId) return NextResponse.json({ error: "merOrderId is required" }, { status: 400 });
 
   // Already finalized? Return it without re-creating or re-emailing.
   const existing = await getByMerOrderId(merOrderId);
-  if (existing) {
-    const p = await getProductBySlug(existing.designId);
-    return NextResponse.json(view(existing, p?.image ?? null));
-  }
+  if (existing) return NextResponse.json(await cardView(existing));
 
-  // Verify payment with the gateway before persisting anything.
   let cfg;
   try {
     cfg = getAletaConfig();
@@ -106,41 +73,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: pending ? "pending" : "failed", paid: false, resultCode });
   }
 
-  // Payment confirmed → create the card + code now.
-  const gift = body.gift ?? {};
-  const design = typeof gift.design === "string" && gift.design ? gift.design : "";
-  const product = design ? await getProductBySlug(design) : null;
-
-  const { card, created } = await createActiveCard({
+  const { card } = await finalizeOrder({
     merOrderId,
-    // Authoritative amount: what the gateway charged, falling back to the product.
-    amountMinor: paidAmount ?? product?.priceMinor ?? 0,
-    currency: paidCurrency ?? product?.currency ?? "SGD",
-    designId: product?.slug ?? design ?? "card",
-    productName: product?.name ?? null,
-    recipientName: str(gift.recipient, 120),
-    recipientEmail: str(gift.recipientEmail, 200),
-    senderName: str(gift.sender, 120),
-    buyerEmail: str(gift.buyerEmail, 200),
-    message: str(gift.message, 280),
-    apTransId: apTransId ?? null,
+    gift: body.gift ?? {},
+    paidAmount,
+    paidCurrency,
+    apTransId,
   });
-
-  if (created) {
-    // Best-effort — don't fail the response if email delivery has a hiccup.
-    await sendGiftEmails({
-      code: card.code,
-      designId: card.designId,
-      productName: card.productName,
-      amountMinor: card.amountMinor,
-      currency: card.currency,
-      recipientName: card.recipientName,
-      recipientEmail: card.recipientEmail,
-      senderName: card.senderName,
-      buyerEmail: card.buyerEmail,
-      message: card.message,
-    }).catch(() => {});
-  }
-
-  return NextResponse.json(view(card, product?.image ?? null));
+  return NextResponse.json(await cardView(card));
 }
