@@ -87,10 +87,11 @@ export async function POST(req: NextRequest) {
     const status = res.result?.resultStatus;
 
     if (!paymentLink || status === "F") {
+      console.error("[checkout] order rejected:", JSON.stringify(res));
       return NextResponse.json(
         {
           error: "Order was not accepted by the gateway",
-          resultCode: res.result?.resultCode,
+          resultCode: res.result?.resultCode ?? res.data?.paymentResult?.resultCode,
           resultMsg: res.result?.resultMsg ?? res.data?.paymentResult?.resultMsg,
         },
         { status: 502 },

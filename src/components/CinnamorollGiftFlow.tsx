@@ -266,8 +266,10 @@ export default function CinnamorollGiftFlow({ products }: { products: StoreProdu
       });
       const data = await res.json();
       if (!res.ok) {
-        const base = data.error || data.resultMsg || "Could not start the payment. Please try again.";
-        throw new Error(data.detail ? `${base} — ${data.detail}` : base);
+        const base = data.error || "Could not start the payment. Please try again.";
+        const code = data.resultCode ? ` (${data.resultCode})` : "";
+        const extra = data.resultMsg || data.detail;
+        throw new Error(extra ? `${base}${code} — ${extra}` : `${base}${code}`);
       }
       try {
         localStorage.setItem("gac:order:" + data.merOrderId, JSON.stringify({ form }));
