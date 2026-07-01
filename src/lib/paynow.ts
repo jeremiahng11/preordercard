@@ -134,7 +134,7 @@ export async function generatePaynowQrc(
 ): Promise<QrcResult> {
   // Body shape required by the PayNow genQrc API (fields per its error message):
   // tid, mid, channel, txnType, merCode, qrcType — plus order/amount/callback.
-  const reqBody = {
+  const subs: Record<string, string> = {
     merCode: cfg.merchantCode,
     mid: cfg.mid,
     tid: cfg.tid,
@@ -146,6 +146,31 @@ export async function generatePaynowQrc(
     expiryTime: expiryTime(30),
     webhook: params.webhook,
   };
+
+  // If ALETA_PAYNOW_BODY is set, use it verbatim (a JSON template with {{placeholders}}
+  // from the list above) — lets you match the PayNow doc exactly without code changes.
+  let reqBody: Record<string, unknown>;
+  const template = process.env.ALETA_PAYNOW_BODY;
+  if (template && template.trim()) {
+    let filled = template;
+    for (const [k, v] of Object.entries(subs)) {
+      filled = filled.split(`{{${k}}}`).join(v);
+    }
+    reqBody = JSON.parse(filled) as Record<string, unknown>;
+  } else {
+    reqBody = {
+      merCode: subs.merCode,
+      mid: subs.mid,
+      tid: subs.tid,
+      channel: subs.channel,
+      txnType: subs.txnType,
+      qrcType: subs.qrcType,
+      merOrderId: subs.merOrderId,
+      merTransAmt: subs.merTransAmt,
+      expiryTime: subs.expiryTime,
+      webhook: subs.webhook,
+    };
+  }
   console.log("[paynow] genQrc request:", JSON.stringify(reqBody));
   const res = await call<Record<string, unknown> & { data?: Record<string, unknown> }>(cfg, cfg.genQrcPath, reqBody);
 
