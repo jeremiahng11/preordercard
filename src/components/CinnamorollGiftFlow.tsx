@@ -31,8 +31,12 @@ export type StoreCollection = {
   eyebrow: string;
   title: string;
   description: string;
+  comingSoon: boolean;
+  comingSoonDate: string | null;
   cards: StoreProduct[];
 };
+
+export type PaymentMethods = { card: boolean; paynow: boolean };
 
 function fmtPrice(minor: number, currency: string): string {
   const sym = currency === "SGD" ? "S$" : currency + " ";
@@ -165,18 +169,21 @@ const STYLES = `
 @keyframes sgin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 `;
 
-function GiftCard({ product, recipient, float, interactive, thumb }: {
+function GiftCard({ product, recipient, float, interactive, thumb, comingSoon, comingSoonDate }: {
   product: StoreProduct;
   recipient?: string;
   float?: boolean;
   interactive?: boolean;
   thumb?: boolean;
+  comingSoon?: boolean; // override (e.g. collection-level coming soon)
+  comingSoonDate?: string | null;
 }) {
   const [flipped, setFlipped] = useState(false);
   const name = (recipient || "").trim().toUpperCase() || "YOUR FRIEND";
-  const soonDate = fmtComingSoon(product.comingSoonDate);
+  const isSoon = comingSoon ?? product.comingSoon;
+  const soonDate = fmtComingSoon(comingSoonDate ?? product.comingSoonDate);
 
-  const comingSoonBanner = product.comingSoon ? (
+  const comingSoonBanner = isSoon ? (
     <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none", zIndex: 3 }}>
       <div
         style={{
@@ -248,7 +255,13 @@ function GiftCard({ product, recipient, float, interactive, thumb }: {
   );
 }
 
-export default function CinnamorollGiftFlow({ collections }: { collections: StoreCollection[] }) {
+export default function CinnamorollGiftFlow({
+  collections,
+  paymentMethods = { card: true, paynow: true },
+}: {
+  collections: StoreCollection[];
+  paymentMethods?: PaymentMethods;
+}) {
   const [step, setStep] = useState<string>("product");
   const [overlay, setOverlay] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -262,7 +275,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
     collection: collections[0]?.id ?? "",
     design: collections[0]?.cards[0]?.id ?? "",
   });
-  const [pay, setPay] = useState("paynow");
+  const [pay, setPay] = useState(paymentMethods.card ? "card" : "paynow");
   const [redeemInput, setRedeemInput] = useState("");
   const [redeemed, setRedeemed] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -284,8 +297,12 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
   const cards = selectedCollection?.cards ?? [];
   const selected = cards.find((d) => d.id === form.design) ?? cards[0];
   const soldOut = selected ? selected.status !== "active" : true;
-  const comingSoon = !!selected?.comingSoon;
-  const comingSoonLabel = fmtComingSoon(selected?.comingSoonDate);
+  const collComingSoon = !!selectedCollection?.comingSoon;
+  const comingSoon = collComingSoon || !!selected?.comingSoon;
+  const comingSoonRawDate = collComingSoon
+    ? selectedCollection?.comingSoonDate ?? null
+    : selected?.comingSoonDate ?? null;
+  const comingSoonLabel = fmtComingSoon(comingSoonRawDate);
   const unavailable = soldOut || comingSoon;
   const priceLabel = selected ? fmtPrice(selected.priceMinor, selected.currency) : "";
   const stepIdx = ({ product: 0, details: 0, review: 1, success: 2 } as Record<string, number>)[step] ?? 0;
@@ -414,7 +431,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
         {/* ===== PRODUCT ===== */}
         {step === "product" && (
           <div className="sg-fadein">
-            <GiftCard product={selected} recipient={form.recipient} float interactive />
+            <GiftCard product={selected} recipient={form.recipient} comingSoon={comingSoon} comingSoonDate={comingSoonRawDate} float interactive />
             <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>
               {selectedCollection.name} · <span style={{ color: "var(--rose)" }}>{selected.name}</span> — tap the card to see the back
             </div>
@@ -498,7 +515,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
         {/* ===== DETAILS ===== */}
         {step === "details" && (
           <div className="sg-fadein">
-            <GiftCard product={selected} recipient={form.recipient} interactive />
+            <GiftCard product={selected} recipient={form.recipient} comingSoon={comingSoon} comingSoonDate={comingSoonRawDate} interactive />
             <div className="sg-panel" style={{ marginTop: 16 }}>
               <h1 className="sg-h1" style={{ fontSize: 20 }}>Who's it for?</h1>
 
@@ -561,12 +578,16 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
 
             <div className="sg-panel" style={{ marginTop: 14 }}>
               <div className="sg-steplabel" style={{ marginBottom: 12 }}>Payment method</div>
-              <div className={"sg-pay" + (pay === "paynow" ? " sel" : "")} onClick={() => setPay("paynow")}>
-                <div className="sg-radio" /><div style={{ flex: 1 }}><div className="sg-pm-name">PayNow</div><div className="sg-pm-sub">Scan & pay with any SG bank app</div></div><div style={{ fontSize: 18 }}>🇸🇬</div>
-              </div>
-              <div className={"sg-pay" + (pay === "card" ? " sel" : "")} onClick={() => setPay("card")}>
-                <div className="sg-radio" /><div style={{ flex: 1 }}><div className="sg-pm-name">Credit / Debit card</div><div className="sg-pm-sub">Visa, Mastercard, Amex</div></div><div style={{ fontSize: 16 }}>💳</div>
-              </div>
+              {paymentMethods.paynow && (
+                <div className={"sg-pay" + (pay === "paynow" ? " sel" : "")} onClick={() => setPay("paynow")}>
+                  <div className="sg-radio" /><div style={{ flex: 1 }}><div className="sg-pm-name">PayNow</div><div className="sg-pm-sub">Scan & pay with any SG bank app</div></div><div style={{ fontSize: 18 }}>🇸🇬</div>
+                </div>
+              )}
+              {paymentMethods.card && (
+                <div className={"sg-pay" + (pay === "card" ? " sel" : "")} onClick={() => setPay("card")}>
+                  <div className="sg-radio" /><div style={{ flex: 1 }}><div className="sg-pm-name">Credit / Debit card</div><div className="sg-pm-sub">Visa, Mastercard, Amex</div></div><div style={{ fontSize: 16 }}>💳</div>
+                </div>
+              )}
               {pay === "card" && (
                 <div className="sg-fadein" style={{ marginTop: 6, fontSize: 12, color: "var(--muted)", fontWeight: 500, lineHeight: 1.5 }}>
                   🔒 You'll be securely redirected to Aleta Planet to enter your Visa / Mastercard details and complete 3-D Secure.
@@ -625,7 +646,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
                 <div><b>Subject:</b> 🎀 {form.sender} sent you a Cinnamoroll Visa card!</div>
               </div>
               <div className="sg-mail-body">
-                <GiftCard product={selected} recipient={form.recipient} interactive />
+                <GiftCard product={selected} recipient={form.recipient} comingSoon={comingSoon} comingSoonDate={comingSoonRawDate} interactive />
                 <h2 className="sg-display" style={{ fontWeight: 800, fontSize: 19, marginTop: 16 }}>You've got a gift, {form.recipient}! 🎁</h2>
                 <p className="sg-lead" style={{ marginTop: 8, fontStyle: "italic" }}>"{form.message}"</p>
                 <p className="sg-hint" style={{ marginTop: 4 }}>— from {form.sender}</p>
@@ -651,7 +672,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
             </div>
             {!redeemed ? (
               <div className="sg-fadein">
-                <GiftCard product={selected} recipient={form.recipient} interactive />
+                <GiftCard product={selected} recipient={form.recipient} comingSoon={comingSoon} comingSoonDate={comingSoonRawDate} interactive />
                 <div className="sg-panel" style={{ marginTop: 16 }}>
                   <h2 className="sg-display" style={{ fontWeight: 800, fontSize: 18 }}>Enter your gift code</h2>
                   <p className="sg-lead" style={{ marginTop: 4, fontSize: 13 }}>Found in your gift email from {form.sender}.</p>
@@ -665,7 +686,7 @@ export default function CinnamorollGiftFlow({ collections }: { collections: Stor
                 <div className="sg-success-ring">✓</div>
                 <h2 className="sg-display" style={{ fontWeight: 800, fontSize: 20 }}>Card activated! 🎀</h2>
                 <p className="sg-lead" style={{ marginTop: 6 }}>Your Cinnamoroll {selected.name} card is now in your Aleta wallet.</p>
-                <div style={{ marginTop: 16 }}><GiftCard product={selected} recipient={form.recipient} float interactive /></div>
+                <div style={{ marginTop: 16 }}><GiftCard product={selected} recipient={form.recipient} comingSoon={comingSoon} comingSoonDate={comingSoonRawDate} float interactive /></div>
                 <button className="sg-btn sg-btn-primary" style={{ marginTop: 18 }} onClick={() => { setOverlay(null); setRedeemed(false); }}>Go to my wallet</button>
               </div>
             )}

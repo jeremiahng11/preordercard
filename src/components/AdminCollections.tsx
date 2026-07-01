@@ -11,6 +11,8 @@ export type CollectionView = {
   title: string | null;
   description: string | null;
   status: string;
+  comingSoon: boolean;
+  comingSoonDate: string | null;
 };
 
 export default function AdminCollections({ collections }: { collections: CollectionView[] }) {
@@ -56,11 +58,18 @@ export default function AdminCollections({ collections }: { collections: Collect
   );
 }
 
-type CopyFields = { name: string; eyebrow: string; title: string; description: string };
+type CopyFields = {
+  name: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  comingSoon: boolean;
+  comingSoonDate: string;
+};
 
 function AddCollection({ busy, onCreate }: { busy: boolean; onCreate: (p: CopyFields) => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState<CopyFields>({ name: "", eyebrow: "", title: "", description: "" });
+  const [f, setF] = useState<CopyFields>({ name: "", eyebrow: "", title: "", description: "", comingSoon: false, comingSoonDate: "" });
 
   if (!open) {
     return (
@@ -79,7 +88,7 @@ function AddCollection({ busy, onCreate }: { busy: boolean; onCreate: (p: CopyFi
           style={primaryBtn}
           onClick={async () => {
             if (await onCreate(f)) {
-              setF({ name: "", eyebrow: "", title: "", description: "" });
+              setF({ name: "", eyebrow: "", title: "", description: "", comingSoon: false, comingSoonDate: "" });
               setOpen(false);
             }
           }}
@@ -107,6 +116,8 @@ function CollectionRow({
     eyebrow: c.eyebrow ?? "",
     title: c.title ?? "",
     description: c.description ?? "",
+    comingSoon: c.comingSoon,
+    comingSoonDate: c.comingSoonDate ?? "",
   });
 
   return (
@@ -134,6 +145,11 @@ function CollectionRow({
             <span style={{ background: c.status === "active" ? "#16361f" : "#2a2e36", color: c.status === "active" ? "#7ee2a0" : "#aab2c0", padding: "3px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
               {c.status === "active" ? "Visible" : "Hidden"}
             </span>
+            {c.comingSoon && (
+              <span style={{ background: "#332842", color: "#c9aef4", padding: "3px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
+                Coming soon{c.comingSoonDate ? ` · ${c.comingSoonDate}` : ""}
+              </span>
+            )}
           </div>
           {c.eyebrow && <div style={{ color: "#9b8cf0", fontSize: 12, marginTop: 6, textTransform: "uppercase", letterSpacing: 0.6 }}>{c.eyebrow}</div>}
           {c.title && <div style={{ fontSize: 15, fontWeight: 600, marginTop: 2 }}>{c.title}</div>}
@@ -164,6 +180,18 @@ function Fields({ f, setF }: { f: CopyFields; setF: (f: CopyFields) => void }) {
       <input style={input} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
       <Label>Description</Label>
       <textarea style={{ ...input, minHeight: 70, resize: "vertical" }} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
+      <div style={{ marginTop: 10, padding: "10px 12px", border: "1px solid #2d333f", borderRadius: 9 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+          <input type="checkbox" checked={f.comingSoon} onChange={(e) => setF({ ...f, comingSoon: e.target.checked })} />
+          Coming soon (whole collection — visible but not purchasable)
+        </label>
+        {f.comingSoon && (
+          <div style={{ marginTop: 8 }}>
+            <Label>Estimated launch date (shown to customers)</Label>
+            <input type="date" value={f.comingSoonDate} onChange={(e) => setF({ ...f, comingSoonDate: e.target.value })} style={input} />
+          </div>
+        )}
+      </div>
     </>
   );
 }

@@ -25,7 +25,14 @@ export async function POST(req: NextRequest) {
   const id = typeof body.id === "string" ? body.id : "";
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const patch: { name?: string; eyebrow?: string | null; title?: string | null; description?: string | null } = {};
+  const patch: {
+    name?: string;
+    eyebrow?: string | null;
+    title?: string | null;
+    description?: string | null;
+    comingSoon?: boolean;
+    comingSoonDate?: string | null;
+  } = {};
   if (body.name !== undefined) {
     const name = str(body.name, 120);
     if (!name) return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
@@ -34,6 +41,8 @@ export async function POST(req: NextRequest) {
   if (body.eyebrow !== undefined) patch.eyebrow = str(body.eyebrow, 160);
   if (body.title !== undefined) patch.title = str(body.title, 160);
   if (body.description !== undefined) patch.description = str(body.description, 600);
+  if (body.comingSoon !== undefined) patch.comingSoon = body.comingSoon === true;
+  if (body.comingSoonDate !== undefined) patch.comingSoonDate = str(body.comingSoonDate, 40);
 
   const updated = await updateCollection(id, patch);
   if (!updated) return NextResponse.json({ error: "Collection not found" }, { status: 404 });

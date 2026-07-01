@@ -60,6 +60,8 @@ export const collections = pgTable(
     title: varchar("title", { length: 160 }),
     description: text("description"),
     status: varchar("status", { length: 16 }).notNull().default("active"),
+    comingSoon: boolean("coming_soon").notNull().default(false),
+    comingSoonDate: varchar("coming_soon_date", { length: 40 }),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -103,6 +105,13 @@ export const products = pgTable(
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type ProductStatus = "active" | "soldout" | "delisted";
+
+/** Simple key/value store for app settings (e.g. enabled payment methods). */
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export type GiftCardStatus =
   | "pending"

@@ -82,6 +82,9 @@ function Shell({ children, showNav }: { children: React.ReactNode; showNav?: boo
               <Link href="/admin/products" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
                 Products
               </Link>
+              <Link href="/admin/settings" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
+                Settings
+              </Link>
               <Link href="/admin/api-docs" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
                 API docs
               </Link>

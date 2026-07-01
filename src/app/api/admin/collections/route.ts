@@ -26,11 +26,14 @@ export async function POST(req: NextRequest) {
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
   try {
+    const comingSoon = body.comingSoon === true;
     const c = await createCollection({
       name,
       eyebrow: str(body.eyebrow, 160),
       title: str(body.title, 160),
       description: str(body.description, 600),
+      comingSoon,
+      comingSoonDate: comingSoon ? str(body.comingSoonDate, 40) : null,
     });
     return NextResponse.json({ ok: true, id: c.id, slug: c.slug });
   } catch (e) {

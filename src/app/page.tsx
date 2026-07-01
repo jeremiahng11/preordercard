@@ -2,16 +2,23 @@ import CinnamorollGiftFlow, { type StoreCollection } from "@/components/Cinnamor
 import { isDbConfigured } from "@/lib/db";
 import { listActiveCollections } from "@/lib/collections";
 import { listStorefrontProducts } from "@/lib/products";
+import { getPaymentMethods, type PaymentMethods } from "@/lib/settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let collections: StoreCollection[] = [];
+  let paymentMethods: PaymentMethods = { card: true, paynow: true };
 
   if (isDbConfigured()) {
     try {
-      const [colls, prods] = await Promise.all([listActiveCollections(), listStorefrontProducts()]);
+      const [colls, prods, pm] = await Promise.all([
+        listActiveCollections(),
+        listStorefrontProducts(),
+        getPaymentMethods(),
+      ]);
+      paymentMethods = pm;
       collections = colls
         .map((c) => ({
           id: c.slug,
@@ -19,6 +26,8 @@ export default async function Home() {
           eyebrow: c.eyebrow ?? "",
           title: c.title ?? c.name,
           description: c.description ?? "",
+          comingSoon: c.comingSoon,
+          comingSoonDate: c.comingSoonDate ?? null,
           cards: prods
             .filter((p) => p.collectionId === c.id)
             .map((p) => ({
@@ -39,5 +48,5 @@ export default async function Home() {
     }
   }
 
-  return <CinnamorollGiftFlow collections={collections} />;
+  return <CinnamorollGiftFlow collections={collections} paymentMethods={paymentMethods} />;
 }

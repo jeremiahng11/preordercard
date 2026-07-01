@@ -35,6 +35,8 @@ export interface CreateCollectionInput {
   eyebrow?: string | null;
   title?: string | null;
   description?: string | null;
+  comingSoon?: boolean;
+  comingSoonDate?: string | null;
 }
 
 export async function createCollection(input: CreateCollectionInput): Promise<Collection> {
@@ -50,6 +52,8 @@ export async function createCollection(input: CreateCollectionInput): Promise<Co
           eyebrow: input.eyebrow ?? null,
           title: input.title ?? null,
           description: input.description ?? null,
+          comingSoon: input.comingSoon ?? false,
+          comingSoonDate: input.comingSoonDate ?? null,
           status: "active",
         })
         .returning();
@@ -67,6 +71,8 @@ export interface UpdateCollectionInput {
   eyebrow?: string | null;
   title?: string | null;
   description?: string | null;
+  comingSoon?: boolean;
+  comingSoonDate?: string | null;
 }
 
 export async function updateCollection(id: string, input: UpdateCollectionInput): Promise<Collection | null> {
@@ -76,6 +82,8 @@ export async function updateCollection(id: string, input: UpdateCollectionInput)
   if (input.eyebrow !== undefined) patch.eyebrow = input.eyebrow;
   if (input.title !== undefined) patch.title = input.title;
   if (input.description !== undefined) patch.description = input.description;
+  if (input.comingSoon !== undefined) patch.comingSoon = input.comingSoon;
+  if (input.comingSoonDate !== undefined) patch.comingSoonDate = input.comingSoonDate;
   const [row] = await db.update(collections).set(patch).where(eq(collections.id, id)).returning();
   return row ?? null;
 }
