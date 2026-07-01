@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ADV_LOGO } from "@/lib/assets";
 
 const ITEMS = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/collections", label: "Collections" },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/settings", label: "Settings" },
+  { href: "/admin/users", label: "Users" },
   { href: "/admin/api-docs", label: "API docs" },
+  { href: "/admin/account", label: "Account" },
 ];
 
 export default function AdminNav() {
@@ -35,8 +38,9 @@ export default function AdminNav() {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <Link href="/admin" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#fff" }}>
-          <span style={{ fontSize: 18 }}>🎀</span>
+        <Link href="/admin" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#fff" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ADV_LOGO} alt="Aleta Adventure" style={{ height: 28, width: "auto" }} />
           <span style={{ fontWeight: 800, fontSize: 16 }}>Gift Card Admin</span>
         </Link>
         <nav style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>

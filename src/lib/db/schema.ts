@@ -106,6 +106,21 @@ export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type ProductStatus = "active" | "soldout" | "delisted";
 
+/** Admin users who can log into the dashboard. */
+export const adminUsers = pgTable(
+  "admin_users",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    username: varchar("username", { length: 64 }).notNull(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ usernameUq: uniqueIndex("admin_users_username_uq").on(t.username) }),
+);
+
+export type AdminUser = typeof adminUsers.$inferSelect;
+
 /** Simple key/value store for app settings (e.g. enabled payment methods). */
 export const appSettings = pgTable("app_settings", {
   key: varchar("key", { length: 64 }).primaryKey(),

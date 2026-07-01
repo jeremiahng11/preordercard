@@ -29,6 +29,8 @@ export async function register() {
   try {
     const { seedDefaults } = await import("@/lib/seed");
     await seedDefaults();
+    const { ensureSeedUser } = await import("@/lib/users");
+    await ensureSeedUser();
   } catch (e) {
     console.error("[seed] failed:", (e as Error).message);
   }
