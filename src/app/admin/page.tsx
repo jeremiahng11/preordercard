@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminAuthed, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { listCards } from "@/lib/giftcards";
-import AdminCards, { LogoutButton, type CardView } from "@/components/AdminCards";
+import AdminCards, { type CardView } from "@/components/AdminCards";
+import AdminNav from "@/components/AdminNav";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   if (!isAdminConfigured()) {
     return (
-      <Shell>
+      <Shell nav={false}>
         <p style={{ color: "#ff9fc0" }}>
           Admin is not configured. Set <code>ADMIN_PASSWORD</code> to enable the admin area.
         </p>
@@ -24,7 +24,7 @@ export default async function AdminDashboard() {
 
   if (!isDbConfigured()) {
     return (
-      <Shell showNav>
+      <Shell>
         <p style={{ color: "#ff9fc0" }}>
           Database is not configured. Set <code>DATABASE_URL</code> to view purchased codes.
         </p>
@@ -53,45 +53,39 @@ export default async function AdminDashboard() {
     return acc;
   }, {});
 
+  const stats: { label: string; value: number; color: string }[] = [
+    { label: "Total", value: rows.length, color: "#e8eaed" },
+    { label: "Active", value: counts.active ?? 0, color: "#7ee2a0" },
+    { label: "Redeemed", value: counts.redeemed ?? 0, color: "#8fc1ff" },
+    { label: "Inactive", value: counts.pending ?? 0, color: "#f4d58d" },
+    { label: "Revoked", value: counts.revoked ?? 0, color: "#ff9fc0" },
+    { label: "Refunded", value: counts.refunded ?? 0, color: "#c9aef4" },
+  ];
+
   return (
-    <Shell showNav>
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 18, color: "#aeb6c2", fontSize: 13 }}>
-        <span>Total: <b style={{ color: "#e8eaed" }}>{rows.length}</b></span>
-        <span>Active: <b style={{ color: "#7ee2a0" }}>{counts.active ?? 0}</b></span>
-        <span>Redeemed: <b style={{ color: "#8fc1ff" }}>{counts.redeemed ?? 0}</b></span>
-        <span>Inactive: <b style={{ color: "#f4d58d" }}>{counts.pending ?? 0}</b></span>
-        <span>Revoked: <b style={{ color: "#ff9fc0" }}>{counts.revoked ?? 0}</b></span>
-        <span>Refunded: <b style={{ color: "#c9aef4" }}>{counts.refunded ?? 0}</b></span>
+    <Shell>
+      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>Purchased codes</h1>
+      <p style={{ color: "#7c8595", fontSize: 13, margin: "0 0 18px" }}>All gift cards, newest first.</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12, marginBottom: 22 }}>
+        {stats.map((s) => (
+          <div key={s.label} style={{ background: "#181b22", border: "1px solid #262b36", borderRadius: 12, padding: "14px 16px" }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: 12, color: "#7c8595", marginTop: 2 }}>{s.label}</div>
+          </div>
+        ))}
       </div>
+
       <AdminCards cards={cards} />
     </Shell>
   );
 }
 
-function Shell({ children, showNav }: { children: React.ReactNode; showNav?: boolean }) {
+function Shell({ children, nav = true }: { children: React.ReactNode; nav?: boolean }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Gift Card Admin</h1>
-          {showNav && (
-            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <Link href="/admin/collections" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
-                Collections
-              </Link>
-              <Link href="/admin/products" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
-                Products
-              </Link>
-              <Link href="/admin/settings" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
-                Settings
-              </Link>
-              <Link href="/admin/api-docs" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
-                API docs
-              </Link>
-              <LogoutButton />
-            </div>
-          )}
-        </div>
+        {nav && <AdminNav />}
         {children}
       </div>
     </div>

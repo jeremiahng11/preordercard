@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminAuthed, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { listAllProducts } from "@/lib/products";
 import { listAllCollections } from "@/lib/collections";
 import AdminProducts, { type CollectionOption, type ProductView } from "@/components/AdminProducts";
+import AdminNav from "@/components/AdminNav";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,13 +43,8 @@ export default async function AdminProductsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Card products</h1>
-          <div style={{ display: "flex", gap: 14 }}>
-            <Link href="/admin/collections" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>Collections</Link>
-            <Link href="/admin" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>Codes</Link>
-          </div>
-        </div>
+        <AdminNav />
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 18px" }}>Card products</h1>
         {dbError ? <p style={{ color: "#ff9fc0" }}>{dbError}</p> : <AdminProducts products={products} collections={collections} />}
       </div>
     </div>

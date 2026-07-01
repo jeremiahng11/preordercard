@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminAuthed, isAdminConfigured } from "@/lib/admin-auth";
 import { resolveBaseUrl } from "@/lib/config";
+import AdminNav from "@/components/AdminNav";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,12 +15,8 @@ export default async function ApiDocsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 20px 64px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Redemption API — for the Aleta Adventure app</h1>
-          <Link href="/admin" style={{ color: "#9b8cf0", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
-            ← Back
-          </Link>
-        </div>
+        <AdminNav />
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 8px" }}>Redemption API — for the Aleta Adventure app</h1>
 
         <P>
           Hand this to the app developers. It lets the Aleta Adventure app validate a Cinnamoroll gift code and
