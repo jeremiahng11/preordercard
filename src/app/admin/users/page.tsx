@@ -18,6 +18,8 @@ export default async function AdminUsersPage() {
   if (isDbConfigured()) {
     try {
       users = await listUsers();
+      // Admin accounts are only visible to admins; hide them from users/developers.
+      if (me.role !== "admin") users = users.filter((u) => u.role !== "admin");
     } catch (e) {
       dbError = (e as Error).message;
     }

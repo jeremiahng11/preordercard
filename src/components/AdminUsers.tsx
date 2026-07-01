@@ -17,7 +17,7 @@ export default function AdminUsers({
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [makeAdmin, setMakeAdmin] = useState(false);
+  const [role, setRole] = useState<"user" | "developer" | "admin">("user");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -30,13 +30,14 @@ export default function AdminUsers({
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role: makeAdmin ? "admin" : "user" }),
+        body: JSON.stringify({ username, password, role }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not create user");
       setUsername("");
       setPassword("");
-      setMsg("User created");
+      setRole("user");
+      setMsg(role === "developer" ? "Developer created — API keys are on their API keys page" : "User created");
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -101,16 +102,25 @@ export default function AdminUsers({
               <Label>Temporary password</Label>
               <input style={input} type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 6 chars" />
             </div>
+            <div style={{ minWidth: 150 }}>
+              <Label>Role</Label>
+              <select style={input} value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
+                <option value="user">User (staff)</option>
+                <option value="developer">Developer (read-only + API keys)</option>
+                <option value="admin">Admin (manages users)</option>
+              </select>
+            </div>
             <button onClick={create} disabled={busy || !username || password.length < 6} style={primaryBtn}>
               Create
             </button>
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginTop: 10, cursor: "pointer" }}>
-            <input type="checkbox" checked={makeAdmin} onChange={(e) => setMakeAdmin(e.target.checked)} />
-            Make this user an admin (can manage users)
-          </label>
-          <p style={{ color: "#7c8595", fontSize: 12, marginTop: 8 }}>
-            Share the temporary password with the user — they can change it under Account after logging in.
+          <p style={{ color: "#7c8595", fontSize: 12, marginTop: 10 }}>
+            {role === "developer"
+              ? "Developers can view everything but change nothing. They get sandbox + production API keys automatically."
+              : role === "admin"
+                ? "Admins can manage users and settings."
+                : "Staff users can manage cards, products and settings, but not other users."}
+            {" "}Share the temporary password — they can change it under Account after logging in.
           </p>
           {error && <p style={{ color: "#ff9fc0", fontSize: 13, marginTop: 8 }}>{error}</p>}
           {msg && <p style={{ color: "#7ee2a0", fontSize: 13, marginTop: 8 }}>{msg}</p>}
@@ -134,8 +144,8 @@ export default function AdminUsers({
                   fontWeight: 700,
                   padding: "2px 7px",
                   borderRadius: 99,
-                  background: u.role === "admin" ? "#332842" : "#242a36",
-                  color: u.role === "admin" ? "#c9aef4" : "#9aa3b2",
+                  background: u.role === "admin" ? "#332842" : u.role === "developer" ? "#1c2c44" : "#242a36",
+                  color: u.role === "admin" ? "#c9aef4" : u.role === "developer" ? "#8fc1ff" : "#9aa3b2",
                   textTransform: "uppercase",
                 }}
               >
