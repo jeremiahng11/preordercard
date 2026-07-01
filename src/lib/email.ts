@@ -26,10 +26,10 @@ function isConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }
 
-async function sendOne(to: string, subject: string, html: string): Promise<void> {
+async function sendOne(to: string, subject: string, html: string): Promise<"sent" | "skipped"> {
   if (!isConfigured()) {
     console.log(`[email:skipped] to=${to} subject=${subject} (set RESEND_API_KEY + EMAIL_FROM to send)`);
-    return;
+    return "skipped";
   }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -41,8 +41,15 @@ async function sendOne(to: string, subject: string, html: string): Promise<void>
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Resend ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(`Resend ${res.status}: ${body.slice(0, 300)}`);
   }
+  return "sent";
+}
+
+export interface EmailResult {
+  sent: number;
+  skipped: number;
+  errors: string[];
 }
 
 function shell(inner: string): string {
@@ -100,16 +107,13 @@ function escape(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-/** Send the gift email to the recipient and a receipt to the buyer. Best-effort. */
-export async function sendGiftEmails(d: GiftEmailData): Promise<void> {
+/** Send the gift email to the recipient and a confirmation to the sender/buyer. */
+export async function sendGiftEmails(d: GiftEmailData): Promise<EmailResult> {
   const from = d.senderName || "Someone";
-  const tasks: Promise<void>[] = [];
+  const tasks: Promise<"sent" | "skipped">[] = [];
   if (d.recipientEmail) {
-    tasks.push(
-      sendOne(d.recipientEmail, `🎀 ${from} sent you a Cinnamoroll Visa gift card!`, recipientHtml(d)),
-    );
+    tasks.push(sendOne(d.recipientEmail, `🎀 ${from} sent you a Cinnamoroll Visa gift card!`, recipientHtml(d)));
   }
-  // Email the sender/buyer too (their own confirmation + code + receipt).
   if (d.buyerEmail) {
     const subject = d.recipientName
       ? `🎀 Your Cinnamoroll gift to ${d.recipientName} is on its way!`
@@ -117,7 +121,14 @@ export async function sendGiftEmails(d: GiftEmailData): Promise<void> {
     tasks.push(sendOne(d.buyerEmail, subject, buyerHtml(d)));
   }
   const results = await Promise.allSettled(tasks);
+  const out: EmailResult = { sent: 0, skipped: 0, errors: [] };
   results.forEach((r) => {
-    if (r.status === "rejected") console.error("[email] send failed:", r.reason?.message ?? r.reason);
+    if (r.status === "fulfilled") r.value === "sent" ? out.sent++ : out.skipped++;
+    else {
+      const m = r.reason?.message ?? String(r.reason);
+      out.errors.push(m);
+      console.error("[email] send failed:", m);
+    }
   });
+  return out;
 }

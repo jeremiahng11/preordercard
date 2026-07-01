@@ -3,10 +3,22 @@ import { getDb } from "@/lib/db";
 import { adminUsers, type AdminUser } from "@/lib/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/passwords";
 
-export type PublicUser = { id: string; username: string; createdAt: string };
+export type PublicUser = {
+  id: string;
+  username: string;
+  role: string;
+  createdAt: string;
+  lastLoginAt: string | null;
+};
 
 function toPublic(u: AdminUser): PublicUser {
-  return { id: u.id, username: u.username, createdAt: u.createdAt.toISOString() };
+  return {
+    id: u.id,
+    username: u.username,
+    role: u.role,
+    createdAt: u.createdAt.toISOString(),
+    lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
+  };
 }
 
 export function normalizeUsername(u: string): string {
@@ -39,14 +51,18 @@ export async function countUsers(): Promise<number> {
 
 export type CreateUserResult = { ok: true; user: PublicUser } | { ok: false; reason: "USERNAME_TAKEN" | "INVALID" };
 
-export async function createUser(username: string, password: string): Promise<CreateUserResult> {
+export async function createUser(
+  username: string,
+  password: string,
+  role: "admin" | "user" = "user",
+): Promise<CreateUserResult> {
   const uname = normalizeUsername(username);
   if (uname.length < 3 || password.length < 6) return { ok: false, reason: "INVALID" };
   const db = getDb();
   try {
     const [row] = await db
       .insert(adminUsers)
-      .values({ username: uname, passwordHash: hashPassword(password) })
+      .values({ username: uname, passwordHash: hashPassword(password), role })
       .returning();
     return { ok: true, user: toPublic(row) };
   } catch (e) {
@@ -93,12 +109,17 @@ export async function deleteUser(id: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+export async function recordLogin(userId: string): Promise<void> {
+  const db = getDb();
+  await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, userId));
+}
+
 /** Seed the first admin user from env on an empty table. */
 export async function ensureSeedUser(): Promise<void> {
   const password = process.env.ADMIN_PASSWORD;
   if (!password) return;
   if ((await countUsers()) > 0) return;
   const username = normalizeUsername(process.env.ADMIN_USERNAME || "admin");
-  await createUser(username, password);
+  await createUser(username, password, "admin");
   console.log(`[seed] created initial admin user "${username}"`);
 }

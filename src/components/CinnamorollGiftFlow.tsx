@@ -8,6 +8,7 @@ export type StoreProduct = {
   name: string;
   img: string; // data URL of front art
   back: string; // CSS gradient for the back face
+  backImage: string | null; // optional data URL back art (replaces default back)
   priceMinor: number;
   currency: string;
   status: string; // active | soldout | delisted
@@ -226,29 +227,33 @@ function GiftCard({ product, recipient, float, interactive, thumb, comingSoon, c
           {interactive && <div className="sg-fliphint">↻ Tap to flip</div>}
           {comingSoonBanner}
         </div>
-        {/* BACK — Aleta personalized back */}
+        {/* BACK — custom back image if provided, else the default personalized back */}
         <div className="sg-face sg-face-back" style={{ background: product.back }}>
           <div className="sg-shine" />
-          <div className="sg-back-pad">
-            <div className="sg-back-top">
-              <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-                <img src={ADV_LOGO} alt="Aleta Adventure" style={{ height: 14 }} />
-                <span style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 8.5, color: "#6B39E8", lineHeight: 1, whiteSpace: "nowrap" }}>Aleta Adventure</span>
-              </div>
-              <div className="sg-le">Limited Edition</div>
-            </div>
-            <div className="sg-stripe" />
-            <div>
-              <div className="sg-back-num">•••• •••• •••• 2026</div>
-              <div className="sg-back-foot">
-                <div>
-                  <div className="sg-back-tiny">Cardholder</div>
-                  <div className="sg-back-name">{name}</div>
+          {product.backImage ? (
+            <img src={product.backImage} alt={"Back of " + product.name} />
+          ) : (
+            <div className="sg-back-pad">
+              <div className="sg-back-top">
+                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                  <img src={ADV_LOGO} alt="Aleta Adventure" style={{ height: 14 }} />
+                  <span style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 8.5, color: "#6B39E8", lineHeight: 1, whiteSpace: "nowrap" }}>Aleta Adventure</span>
                 </div>
-                <div className="sg-visa">VISA<small>Platinum</small></div>
+                <div className="sg-le">Limited Edition</div>
+              </div>
+              <div className="sg-stripe" />
+              <div>
+                <div className="sg-back-num">•••• •••• •••• 2026</div>
+                <div className="sg-back-foot">
+                  <div>
+                    <div className="sg-back-tiny">Cardholder</div>
+                    <div className="sg-back-name">{name}</div>
+                  </div>
+                  <div className="sg-visa">VISA<small>Platinum</small></div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

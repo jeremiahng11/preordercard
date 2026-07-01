@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/admin-auth";
+import { getCurrentUser } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { updateProduct } from "@/lib/products";
+import { audit } from "@/lib/audit";
+import { isSameOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +12,9 @@ const MAX_IMAGE_BYTES = 3_000_000;
 
 /** Admin: edit a product's name, price, image and/or back gradient. */
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   if (!isDbConfigured()) return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
 
   let body: Record<string, unknown>;
@@ -27,6 +31,7 @@ export async function POST(req: NextRequest) {
     name?: string;
     priceMinor?: number;
     image?: string;
+    backImage?: string | null;
     back?: string;
     collectionId?: string | null;
     comingSoon?: boolean;
@@ -69,5 +74,6 @@ export async function POST(req: NextRequest) {
 
   const updated = await updateProduct(id, patch);
   if (!updated) return NextResponse.json({ error: "Product not found" }, { status: 404 });
+  await audit(me.username, "product_updated", updated.name);
   return NextResponse.json({ ok: true });
 }

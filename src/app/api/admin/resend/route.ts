@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await sendGiftEmails({
+    const result = await sendGiftEmails({
       code: card.code,
       designId: card.designId,
       productName: card.productName,
@@ -44,8 +44,20 @@ export async function POST(req: NextRequest) {
       buyerEmail: card.buyerEmail,
       message: card.message,
     });
-    await audit(me.username, "email_resent", card.code);
-    return NextResponse.json({ ok: true });
+    if (result.errors.length) {
+      return NextResponse.json(
+        { error: "Email provider rejected the send", detail: result.errors.join(" · ") },
+        { status: 502 },
+      );
+    }
+    if (result.sent === 0) {
+      return NextResponse.json({
+        ok: true,
+        warning: "Email is not configured (RESEND_API_KEY / EMAIL_FROM) — nothing was sent, only logged.",
+      });
+    }
+    await audit(me.username, "email_resent", card.code, `sent=${result.sent}`);
+    return NextResponse.json({ ok: true, sent: result.sent });
   } catch (e) {
     return NextResponse.json({ error: "Could not send email", detail: (e as Error).message }, { status: 502 });
   }

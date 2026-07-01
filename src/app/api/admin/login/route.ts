@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, SESSION_MAX_AGE_SECONDS, createSessionToken, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
-import { verifyLogin } from "@/lib/users";
+import { recordLogin, verifyLogin } from "@/lib/users";
 import { audit } from "@/lib/audit";
 import { clientIp, isSameOrigin, rateLimit } from "@/lib/security";
 
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     await audit(username.toLowerCase(), "login_failed", undefined, `ip=${clientIp(req)}`);
     return NextResponse.json({ error: "Incorrect username or password" }, { status: 401 });
   }
+  await recordLogin(user.id);
   await audit(user.username, "login", undefined, `ip=${clientIp(req)}`);
 
   const res = NextResponse.json({ ok: true });

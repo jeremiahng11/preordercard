@@ -28,6 +28,7 @@ export default async function AdminProductsPage() {
         currency: p.currency,
         image: p.image,
         back: p.back,
+        backImage: p.backImage ?? null,
         status: p.status,
         collectionId: p.collectionId ?? null,
         comingSoon: p.comingSoon,

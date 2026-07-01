@@ -11,6 +11,7 @@ export type ProductView = {
   currency: string;
   image: string;
   back: string;
+  backImage: string | null;
   status: string;
   collectionId: string | null;
   comingSoon: boolean;
@@ -105,6 +106,7 @@ function AddProduct({
     name: string;
     priceMinor: number;
     image: string;
+    backImage: string | null;
     collectionId: string;
     comingSoon: boolean;
     comingSoonDate: string | null;
@@ -117,11 +119,17 @@ function AddProduct({
   const [comingSoon, setComingSoon] = useState(false);
   const [comingSoonDate, setComingSoonDate] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [backImage, setBackImage] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const backRef = useRef<HTMLInputElement>(null);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (f) setImage(await readFileAsDataUrl(f));
+  }
+  async function onBackFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (f) setBackImage(await readFileAsDataUrl(f));
   }
 
   async function submit() {
@@ -131,6 +139,7 @@ function AddProduct({
       name: name.trim(),
       priceMinor,
       image,
+      backImage,
       collectionId,
       comingSoon,
       comingSoonDate: comingSoon && comingSoonDate ? comingSoonDate : null,
@@ -141,8 +150,10 @@ function AddProduct({
       setComingSoon(false);
       setComingSoonDate("");
       setImage(null);
+      setBackImage(null);
       setOpen(false);
       if (fileRef.current) fileRef.current.value = "";
+      if (backRef.current) backRef.current.value = "";
     }
   }
 
@@ -172,6 +183,8 @@ function AddProduct({
           <input style={input} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
           <Label>Card image (front artwork — landscape)</Label>
           <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ color: "#c4cbd6", fontSize: 13 }} />
+          <Label>Back image (optional — replaces the default back)</Label>
+          <input ref={backRef} type="file" accept="image/*" onChange={onBackFile} style={{ color: "#c4cbd6", fontSize: 13 }} />
           <ComingSoon comingSoon={comingSoon} setComingSoon={setComingSoon} date={comingSoonDate} setDate={setComingSoonDate} />
           <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
             <button onClick={submit} disabled={busy || !name.trim() || !image} style={primaryBtn}>
@@ -205,12 +218,21 @@ function ProductRow({
   const [comingSoon, setComingSoon] = useState(product.comingSoon);
   const [comingSoonDate, setComingSoonDate] = useState(product.comingSoonDate ?? "");
   const [image, setImage] = useState<string | null>(null);
+  const [backImage, setBackImage] = useState<string | null>(null);
+  const [clearBack, setClearBack] = useState(false);
   const s = STATUS_STYLE[product.status] ?? { label: product.status, bg: "#2a2e36", fg: "#aab2c0" };
   const collName = collections.find((c) => c.id === product.collectionId)?.name ?? "—";
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (f) setImage(await readFileAsDataUrl(f));
+  }
+  async function onBackFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (f) {
+      setBackImage(await readFileAsDataUrl(f));
+      setClearBack(false);
+    }
   }
 
   async function save() {
@@ -224,10 +246,14 @@ function ProductRow({
       comingSoonDate: comingSoon && comingSoonDate ? comingSoonDate : null,
     };
     if (image) payload.image = image;
+    if (backImage) payload.backImage = backImage;
+    else if (clearBack) payload.backImage = null;
     const ok = await call("/api/admin/products/update", payload);
     if (ok) {
       setEditing(false);
       setImage(null);
+      setBackImage(null);
+      setClearBack(false);
     }
   }
 
@@ -248,8 +274,16 @@ function ProductRow({
               <input style={input} value={name} onChange={(e) => setName(e.target.value)} />
               <Label>Price (SGD)</Label>
               <input style={input} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
-              <Label>Replace image (optional)</Label>
+              <Label>Replace front image (optional)</Label>
               <input type="file" accept="image/*" onChange={onFile} style={{ color: "#c4cbd6", fontSize: 13 }} />
+              <Label>Back image {product.backImage ? "(custom set)" : "(using default)"}</Label>
+              <input type="file" accept="image/*" onChange={onBackFile} style={{ color: "#c4cbd6", fontSize: 13 }} />
+              {product.backImage && !backImage && (
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#9aa3b2", marginTop: 6, cursor: "pointer" }}>
+                  <input type="checkbox" checked={clearBack} onChange={(e) => setClearBack(e.target.checked)} />
+                  Remove custom back (use default)
+                </label>
+              )}
               <ComingSoon comingSoon={comingSoon} setComingSoon={setComingSoon} date={comingSoonDate} setDate={setComingSoonDate} />
               <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                 <button onClick={save} disabled={busy} style={primaryBtn}>
@@ -275,6 +309,7 @@ function ProductRow({
               </div>
               <div style={{ color: "#aeb6c2", fontSize: 14, marginTop: 4 }}>
                 {product.currency} {dollars(product.priceMinor)} · {collName}
+                {product.backImage ? " · custom back" : ""}
               </div>
               <div style={{ color: "#5b6473", fontSize: 11, marginTop: 2 }}>slug: {product.slug}</div>
 

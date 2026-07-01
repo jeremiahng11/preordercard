@@ -58,12 +58,12 @@ async function currentUserId(): Promise<string | null> {
 }
 
 /** The logged-in admin user, or null. Verifies the user still exists. */
-export async function getCurrentUser(): Promise<{ id: string; username: string } | null> {
+export async function getCurrentUser(): Promise<{ id: string; username: string; role: string } | null> {
   const id = await currentUserId();
   if (!id) return null;
   try {
     const user = await getUserById(id);
-    return user ? { id: user.id, username: user.username } : null;
+    return user ? { id: user.id, username: user.username, role: user.role } : null;
   } catch {
     return null;
   }

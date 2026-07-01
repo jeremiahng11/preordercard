@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/admin-auth";
+import { getCurrentUser } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { setCollectionStatus } from "@/lib/collections";
+import { audit } from "@/lib/audit";
+import { isSameOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +12,9 @@ const ALLOWED = ["active", "hidden"] as const;
 
 /** Admin: show or hide a collection from the storefront. */
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   if (!isDbConfigured()) return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
 
   let body: { id?: unknown; status?: unknown };
@@ -29,5 +33,6 @@ export async function POST(req: NextRequest) {
 
   const updated = await setCollectionStatus(id, status as (typeof ALLOWED)[number]);
   if (!updated) return NextResponse.json({ error: "Collection not found" }, { status: 404 });
+  await audit(me.username, "collection_status", updated.name, status);
   return NextResponse.json({ ok: true, status: updated.status });
 }

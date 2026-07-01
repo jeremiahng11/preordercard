@@ -16,6 +16,7 @@ export async function GET() {
         name: p.name,
         img: p.image,
         back: p.back,
+        backImage: p.backImage ?? null,
         priceMinor: p.priceMinor,
         currency: p.currency,
         status: p.status,

@@ -48,6 +48,7 @@ export interface CreateProductInput {
   currency?: string;
   image: string; // data URL
   back?: string;
+  backImage?: string | null; // optional data URL back artwork
   collectionId?: string | null;
   comingSoon?: boolean;
   comingSoonDate?: string | null;
@@ -68,6 +69,7 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
           currency: input.currency ?? "SGD",
           image: input.image,
           back: input.back || DEFAULT_BACK,
+          backImage: input.backImage ?? null,
           collectionId: input.collectionId ?? null,
           comingSoon: input.comingSoon ?? false,
           comingSoonDate: input.comingSoonDate ?? null,
@@ -88,6 +90,7 @@ export interface UpdateProductInput {
   priceMinor?: number;
   image?: string;
   back?: string;
+  backImage?: string | null;
   collectionId?: string | null;
   comingSoon?: boolean;
   comingSoonDate?: string | null;
@@ -100,6 +103,7 @@ export async function updateProduct(id: string, input: UpdateProductInput): Prom
   if (input.priceMinor !== undefined) patch.priceMinor = input.priceMinor;
   if (input.image !== undefined) patch.image = input.image;
   if (input.back !== undefined) patch.back = input.back;
+  if (input.backImage !== undefined) patch.backImage = input.backImage;
   if (input.collectionId !== undefined) patch.collectionId = input.collectionId;
   if (input.comingSoon !== undefined) patch.comingSoon = input.comingSoon;
   if (input.comingSoonDate !== undefined) patch.comingSoonDate = input.comingSoonDate;

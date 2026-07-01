@@ -90,6 +90,8 @@ export const products = pgTable(
     currency: varchar("currency", { length: 3 }).notNull().default("SGD"),
     image: text("image").notNull(), // data URL of the front artwork
     back: text("back").notNull().default("linear-gradient(140deg,#BFE3FB,#E9D4F0 55%,#FBD3E4)"),
+    backImage: text("back_image"), // optional data URL; replaces the default back face
+
     status: varchar("status", { length: 16 }).notNull().default("active"),
     comingSoon: boolean("coming_soon").notNull().default(false),
     comingSoonDate: varchar("coming_soon_date", { length: 40 }),
@@ -113,6 +115,8 @@ export const adminUsers = pgTable(
     id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
     username: varchar("username", { length: 64 }).notNull(),
     passwordHash: text("password_hash").notNull(),
+    role: varchar("role", { length: 16 }).notNull().default("user"), // admin | user
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

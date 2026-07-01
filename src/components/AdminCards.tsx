@@ -57,8 +57,8 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
         body: JSON.stringify({ id }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || data.detail || `${action} failed`);
-      if (action === "resend") setNote("Email sent.");
+      if (!res.ok) throw new Error(data.detail ? `${data.error} — ${data.detail}` : data.error || `${action} failed`);
+      if (action === "resend") setNote(data.warning || "Email sent.");
       else router.refresh();
     } catch (e) {
       setError((e as Error).message);

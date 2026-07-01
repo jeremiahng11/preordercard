@@ -3,12 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export type UserView = { id: string; username: string; createdAt: string };
+export type UserView = { id: string; username: string; role: string; createdAt: string; lastLoginAt: string | null };
 
-export default function AdminUsers({ users, currentUserId }: { users: UserView[]; currentUserId: string }) {
+export default function AdminUsers({
+  users,
+  currentUserId,
+  isAdmin,
+}: {
+  users: UserView[];
+  currentUserId: string;
+  isAdmin: boolean;
+}) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [makeAdmin, setMakeAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -21,7 +30,7 @@ export default function AdminUsers({ users, currentUserId }: { users: UserView[]
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, role: makeAdmin ? "admin" : "user" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not create user");
@@ -79,48 +88,76 @@ export default function AdminUsers({ users, currentUserId }: { users: UserView[]
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
-      <div style={card}>
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>Add user</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div style={{ flex: 1, minWidth: 160 }}>
-            <Label>Username</Label>
-            <input style={input} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. wilson" />
+    <div style={{ maxWidth: 680 }}>
+      {isAdmin ? (
+        <div style={card}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>Add user</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <Label>Username</Label>
+              <input style={input} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. wilson" />
+            </div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <Label>Temporary password</Label>
+              <input style={input} type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 6 chars" />
+            </div>
+            <button onClick={create} disabled={busy || !username || password.length < 6} style={primaryBtn}>
+              Create
+            </button>
           </div>
-          <div style={{ flex: 1, minWidth: 160 }}>
-            <Label>Temporary password</Label>
-            <input style={input} type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 6 chars" />
-          </div>
-          <button onClick={create} disabled={busy || !username || password.length < 6} style={primaryBtn}>
-            Create
-          </button>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginTop: 10, cursor: "pointer" }}>
+            <input type="checkbox" checked={makeAdmin} onChange={(e) => setMakeAdmin(e.target.checked)} />
+            Make this user an admin (can manage users)
+          </label>
+          <p style={{ color: "#7c8595", fontSize: 12, marginTop: 8 }}>
+            Share the temporary password with the user — they can change it under Account after logging in.
+          </p>
+          {error && <p style={{ color: "#ff9fc0", fontSize: 13, marginTop: 8 }}>{error}</p>}
+          {msg && <p style={{ color: "#7ee2a0", fontSize: 13, marginTop: 8 }}>{msg}</p>}
         </div>
-        <p style={{ color: "#7c8595", fontSize: 12, marginTop: 8 }}>
-          Share the temporary password with the user — they can change it under Account after logging in.
+      ) : (
+        <p style={{ color: "#7c8595", fontSize: 13, marginBottom: 4 }}>
+          You can view the team here. Only admins can add or remove users.
         </p>
-        {error && <p style={{ color: "#ff9fc0", fontSize: 13, marginTop: 8 }}>{error}</p>}
-        {msg && <p style={{ color: "#7ee2a0", fontSize: 13, marginTop: 8 }}>{msg}</p>}
-      </div>
+      )}
 
-      <div style={{ ...card, marginTop: 16 }}>
+      <div style={{ ...card, marginTop: isAdmin ? 16 : 0 }}>
         <div style={{ fontWeight: 700, marginBottom: 12 }}>Users ({users.length})</div>
         {users.map((u) => (
-          <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: "1px solid #20242d" }}>
+          <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "10px 0", borderTop: "1px solid #20242d" }}>
             <div>
               <span style={{ fontWeight: 600 }}>{u.username}</span>
+              <span
+                style={{
+                  marginLeft: 8,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "2px 7px",
+                  borderRadius: 99,
+                  background: u.role === "admin" ? "#332842" : "#242a36",
+                  color: u.role === "admin" ? "#c9aef4" : "#9aa3b2",
+                  textTransform: "uppercase",
+                }}
+              >
+                {u.role}
+              </span>
               {u.id === currentUserId && <span style={{ color: "#7ee2a0", fontSize: 11, marginLeft: 8 }}>you</span>}
-              <div style={{ color: "#5b6473", fontSize: 11 }}>added {new Date(u.createdAt).toLocaleDateString("en-SG", { dateStyle: "medium" })}</div>
+              <div style={{ color: "#5b6473", fontSize: 11, marginTop: 2 }}>
+                last login: {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short" }) : "never"}
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => resetPw(u.id, u.username)} disabled={busy} style={ghostBtn}>
-                Reset password
-              </button>
-              {u.id !== currentUserId && (
-                <button onClick={() => remove(u.id)} disabled={busy} style={dangerBtn}>
-                  Delete
+            {isAdmin && (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => resetPw(u.id, u.username)} disabled={busy} style={ghostBtn}>
+                  Reset password
                 </button>
-              )}
-            </div>
+                {u.id !== currentUserId && (
+                  <button onClick={() => remove(u.id)} disabled={busy} style={dangerBtn}>
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

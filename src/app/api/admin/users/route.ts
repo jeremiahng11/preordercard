@@ -12,10 +12,11 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (me.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
   if (!isSameOrigin(req)) return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   if (!isDbConfigured()) return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
 
-  let body: { username?: unknown; password?: unknown };
+  let body: { username?: unknown; password?: unknown; role?: unknown };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -24,8 +25,9 @@ export async function POST(req: NextRequest) {
 
   const username = typeof body.username === "string" ? body.username : "";
   const password = typeof body.password === "string" ? body.password : "";
+  const role = body.role === "admin" ? "admin" : "user";
 
-  const result = await createUser(username, password);
+  const result = await createUser(username, password, role);
   if (!result.ok) {
     const msg =
       result.reason === "USERNAME_TAKEN"

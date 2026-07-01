@@ -50,6 +50,20 @@
       "when": 1782877756141,
       "tag": "0006_careful_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782888030973,
+      "tag": "0007_friendly_roughhouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782888392813,
+      "tag": "0008_flashy_tattoo",
+      "breakpoints": true
     }
   ]
 }

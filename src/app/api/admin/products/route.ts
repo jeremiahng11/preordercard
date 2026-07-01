@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/admin-auth";
+import { getCurrentUser } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { createProduct } from "@/lib/products";
+import { audit } from "@/lib/audit";
+import { isSameOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +16,9 @@ function validImage(v: unknown): v is string {
 
 /** Admin: create a new card product. */
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   if (!isDbConfigured()) return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
 
   let body: Record<string, unknown>;
@@ -40,9 +44,11 @@ export async function POST(req: NextRequest) {
   if (!validImage(body.image)) {
     return NextResponse.json({ error: "A card image (data URL, ≤3MB) is required" }, { status: 400 });
   }
+  const backImage = validImage(body.backImage) ? body.backImage : null;
 
   try {
-    const product = await createProduct({ name, priceMinor, image: body.image, back, collectionId, comingSoon, comingSoonDate });
+    const product = await createProduct({ name, priceMinor, image: body.image, back, backImage, collectionId, comingSoon, comingSoonDate });
+    await audit(me.username, "product_created", product.name);
     return NextResponse.json({ ok: true, id: product.id, slug: product.slug });
   } catch (e) {
     return NextResponse.json({ error: "Could not create product", detail: (e as Error).message }, { status: 500 });

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/admin-auth";
+import { getCurrentUser } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { updateCollection } from "@/lib/collections";
+import { audit } from "@/lib/audit";
+import { isSameOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +14,9 @@ function str(v: unknown, max: number): string | null {
 
 /** Admin: edit a collection's name + marketing copy (eyebrow/title/description). */
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   if (!isDbConfigured()) return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
 
   let body: Record<string, unknown>;
@@ -46,5 +50,6 @@ export async function POST(req: NextRequest) {
 
   const updated = await updateCollection(id, patch);
   if (!updated) return NextResponse.json({ error: "Collection not found" }, { status: 404 });
+  await audit(me.username, "collection_updated", updated.name);
   return NextResponse.json({ ok: true });
 }
