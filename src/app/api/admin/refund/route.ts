@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/admin-auth";
+import { getCurrentUser } from "@/lib/admin-auth";
 import { getAletaConfig, refundOrder } from "@/lib/aleta";
 import { isDbConfigured } from "@/lib/db";
 import { getById, markRefunded } from "@/lib/giftcards";
+import { audit } from "@/lib/audit";
+import { isSameOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,8 +14,12 @@ export const dynamic = "force-dynamic";
  * non-redeemable). Allowed for active or redeemed cards.
  */
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthed())) {
+  const me = await getCurrentUser();
+  if (!me) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isSameOrigin(req)) {
+    return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   }
   if (!isDbConfigured()) {
     return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
@@ -56,6 +62,7 @@ export async function POST(req: NextRequest) {
       );
     }
     const updated = await markRefunded(id);
+    await audit(me.username, "code_refunded", card.code, `merRefundId=${refund.merRefundId ?? ""}`);
     return NextResponse.json({ ok: true, status: updated?.status ?? "refunded", merRefundId: refund.merRefundId });
   } catch (e) {
     return NextResponse.json({ error: "Refund failed", detail: (e as Error).message }, { status: 502 });

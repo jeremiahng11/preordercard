@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { giftCards, type GiftCard, type NewGiftCard } from "@/lib/db/schema";
 
@@ -84,6 +84,106 @@ export async function getById(id: string): Promise<GiftCard | null> {
 export async function listCards(limit = 200): Promise<GiftCard[]> {
   const db = getDb();
   return db.select().from(giftCards).orderBy(desc(giftCards.createdAt)).limit(limit);
+}
+
+export interface CardFilter {
+  q?: string;
+  status?: string; // "all" or a specific status
+  limit: number;
+  offset: number;
+}
+
+/** Paged + filtered list for the dashboard, with a total count for pagination. */
+export async function listCardsPaged(f: CardFilter): Promise<{ rows: GiftCard[]; total: number }> {
+  const db = getDb();
+  const conds = [];
+  if (f.status && f.status !== "all") conds.push(eq(giftCards.status, f.status));
+  if (f.q && f.q.trim()) {
+    const like = `%${f.q.trim()}%`;
+    conds.push(
+      or(
+        ilike(giftCards.code, like),
+        ilike(giftCards.recipientEmail, like),
+        ilike(giftCards.buyerEmail, like),
+        ilike(giftCards.recipientName, like),
+        ilike(giftCards.senderName, like),
+        ilike(giftCards.merOrderId, like),
+      ),
+    );
+  }
+  const where = conds.length ? and(...conds) : undefined;
+  const rows = await db
+    .select()
+    .from(giftCards)
+    .where(where)
+    .orderBy(desc(giftCards.createdAt))
+    .limit(f.limit)
+    .offset(f.offset);
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(giftCards).where(where);
+  return { rows, total: n };
+}
+
+/** Count of cards grouped by status. */
+export async function countByStatus(): Promise<Record<string, number>> {
+  const db = getDb();
+  const rows = await db
+    .select({ status: giftCards.status, n: sql<number>`count(*)::int` })
+    .from(giftCards)
+    .groupBy(giftCards.status);
+  return Object.fromEntries(rows.map((r) => [r.status, r.n]));
+}
+
+export interface SalesSummary {
+  collectedMinor: number; // gross paid (active + redeemed + refunded)
+  redeemedMinor: number;
+  outstandingMinor: number; // active, not yet redeemed (liability)
+  refundedMinor: number;
+  currency: string;
+}
+
+/** Money totals across all cards (assumes a single currency). */
+export async function salesSummary(): Promise<SalesSummary> {
+  const db = getDb();
+  const [r] = await db
+    .select({
+      collected: sql<number>`coalesce(sum(case when ${giftCards.status} in ('active','redeemed','refunded') then ${giftCards.amountMinor} else 0 end),0)::int`,
+      redeemed: sql<number>`coalesce(sum(case when ${giftCards.status} = 'redeemed' then ${giftCards.amountMinor} else 0 end),0)::int`,
+      outstanding: sql<number>`coalesce(sum(case when ${giftCards.status} = 'active' then ${giftCards.amountMinor} else 0 end),0)::int`,
+      refunded: sql<number>`coalesce(sum(case when ${giftCards.status} = 'refunded' then ${giftCards.amountMinor} else 0 end),0)::int`,
+      currency: sql<string>`coalesce(max(${giftCards.currency}),'SGD')`,
+    })
+    .from(giftCards);
+  return {
+    collectedMinor: r?.collected ?? 0,
+    redeemedMinor: r?.redeemed ?? 0,
+    outstandingMinor: r?.outstanding ?? 0,
+    refundedMinor: r?.refunded ?? 0,
+    currency: r?.currency ?? "SGD",
+  };
+}
+
+export interface ProductSales {
+  name: string;
+  count: number;
+  grossMinor: number;
+  currency: string;
+}
+
+/** Sales grouped by product (paid cards only), best sellers first. */
+export async function salesByProduct(): Promise<ProductSales[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      name: sql<string>`coalesce(${giftCards.productName}, ${giftCards.designId})`,
+      count: sql<number>`count(*)::int`,
+      gross: sql<number>`coalesce(sum(${giftCards.amountMinor}),0)::int`,
+      currency: sql<string>`coalesce(max(${giftCards.currency}),'SGD')`,
+    })
+    .from(giftCards)
+    .where(inArray(giftCards.status, ["active", "redeemed", "refunded"]))
+    .groupBy(sql`coalesce(${giftCards.productName}, ${giftCards.designId})`)
+    .orderBy(sql`count(*) desc`);
+  return rows.map((r) => ({ name: r.name, count: r.count, grossMinor: r.gross, currency: r.currency }));
 }
 
 /** Admin: revoke a card so it can no longer be redeemed (no money movement). */

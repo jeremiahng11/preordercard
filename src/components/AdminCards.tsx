@@ -42,12 +42,14 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
-  async function act(id: string, action: "revoke" | "refund") {
+  async function act(id: string, action: "revoke" | "refund" | "resend") {
     if (action === "refund" && !confirm("Refund this purchase via Aleta? This cannot be undone.")) return;
     if (action === "revoke" && !confirm("Revoke this code? It will no longer be redeemable.")) return;
     setBusyId(id);
     setError(null);
+    setNote(null);
     try {
       const res = await fetch(`/api/admin/${action}`, {
         method: "POST",
@@ -56,7 +58,8 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.detail || `${action} failed`);
-      router.refresh();
+      if (action === "resend") setNote("Email sent.");
+      else router.refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -80,6 +83,11 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
       {error && (
         <div style={{ background: "#3a2330", color: "#ff9fc0", padding: "10px 14px", borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {error}
+        </div>
+      )}
+      {note && (
+        <div style={{ background: "#16361f", color: "#7ee2a0", padding: "10px 14px", borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+          {note}
         </div>
       )}
       {cards.length === 0 ? (
@@ -138,6 +146,11 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
                       {canRevoke && (
                         <button onClick={() => act(c.id, "revoke")} disabled={busy} style={btn("#2d333f")}>
                           Revoke
+                        </button>
+                      )}
+                      {canRefund && (
+                        <button onClick={() => act(c.id, "resend")} disabled={busy} style={btn("#2d333f")}>
+                          Resend
                         </button>
                       )}
                       {canRefund && (

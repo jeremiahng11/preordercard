@@ -43,6 +43,13 @@
       "when": 1782875673399,
       "tag": "0005_silent_smasher",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782877756141,
+      "tag": "0006_careful_surge",
+      "breakpoints": true
     }
   ]
 }

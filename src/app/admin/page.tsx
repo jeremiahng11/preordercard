@@ -1,14 +1,35 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminAuthed, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
-import { listCards } from "@/lib/giftcards";
+import { countByStatus, listCardsPaged, salesByProduct, salesSummary } from "@/lib/giftcards";
 import AdminCards, { type CardView } from "@/components/AdminCards";
 import AdminNav from "@/components/AdminNav";
+import InquiryTool from "@/components/InquiryTool";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
+const PAGE_SIZE = 25;
+
+const STATUS_TABS = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "redeemed", label: "Redeemed" },
+  { key: "pending", label: "Inactive" },
+  { key: "revoked", label: "Revoked" },
+  { key: "refunded", label: "Refunded" },
+];
+
+function money(minor: number, currency: string) {
+  return `${currency} ${(minor / 100).toFixed(2)}`;
+}
+
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+}) {
   if (!isAdminConfigured()) {
     return (
       <Shell nav={false}>
@@ -18,9 +39,7 @@ export default async function AdminDashboard() {
       </Shell>
     );
   }
-  if (!(await isAdminAuthed())) {
-    redirect("/admin/login");
-  }
+  if (!(await isAdminAuthed())) redirect("/admin/login");
 
   if (!isDbConfigured()) {
     return (
@@ -32,7 +51,18 @@ export default async function AdminDashboard() {
     );
   }
 
-  const rows = await listCards();
+  const sp = await searchParams;
+  const q = (sp.q ?? "").trim();
+  const status = sp.status ?? "all";
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+
+  const [{ rows, total }, counts, summary, byProduct] = await Promise.all([
+    listCardsPaged({ q, status, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    countByStatus(),
+    salesSummary(),
+    salesByProduct(),
+  ]);
+
   const cards: CardView[] = rows.map((c) => ({
     id: c.id,
     code: c.code,
@@ -48,38 +78,125 @@ export default async function AdminDashboard() {
     merOrderId: c.merOrderId,
   }));
 
-  const counts = rows.reduce<Record<string, number>>((acc, c) => {
-    acc[c.status] = (acc[c.status] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const stats: { label: string; value: number; color: string }[] = [
-    { label: "Total", value: rows.length, color: "#e8eaed" },
-    { label: "Active", value: counts.active ?? 0, color: "#7ee2a0" },
-    { label: "Redeemed", value: counts.redeemed ?? 0, color: "#8fc1ff" },
-    { label: "Inactive", value: counts.pending ?? 0, color: "#f4d58d" },
-    { label: "Revoked", value: counts.revoked ?? 0, color: "#ff9fc0" },
-    { label: "Refunded", value: counts.refunded ?? 0, color: "#c9aef4" },
+  const cur = summary.currency;
+  const stats = [
+    { label: "Collected", value: money(summary.collectedMinor, cur), color: "#7ee2a0" },
+    { label: "Redeemed", value: money(summary.redeemedMinor, cur), color: "#8fc1ff" },
+    { label: "Outstanding", value: money(summary.outstandingMinor, cur), color: "#f4d58d" },
+    { label: "Refunded", value: money(summary.refundedMinor, cur), color: "#c9aef4" },
   ];
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const qs = (patch: Record<string, string>) => {
+    const p = new URLSearchParams();
+    const merged = { q, status, page: String(page), ...patch };
+    for (const [k, v] of Object.entries(merged)) if (v && v !== "all" && !(k === "page" && v === "1")) p.set(k, v);
+    const s = p.toString();
+    return s ? `/admin?${s}` : "/admin";
+  };
 
   return (
     <Shell>
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>Purchased codes</h1>
-      <p style={{ color: "#7c8595", fontSize: 13, margin: "0 0 18px" }}>All gift cards, newest first.</p>
+      <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>Dashboard</h1>
+      <p style={{ color: "#7c8595", fontSize: 13, margin: "0 0 18px" }}>Sales overview and purchased codes.</p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12, marginBottom: 22 }}>
+      {/* Money summary */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 14 }}>
         {stats.map((s) => (
-          <div key={s.label} style={{ background: "#181b22", border: "1px solid #262b36", borderRadius: 12, padding: "14px 16px" }}>
-            <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.value}</div>
+          <div key={s.label} style={cardBox}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
             <div style={{ fontSize: 12, color: "#7c8595", marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
+      {/* Best sellers */}
+      {byProduct.length > 0 && (
+        <div style={{ ...cardBox, marginBottom: 22 }}>
+          <div style={{ fontSize: 12, color: "#7c8595", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.6 }}>
+            Sales by card
+          </div>
+          {byProduct.map((p) => (
+            <div key={p.name} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
+              <span>{p.name} <span style={{ color: "#7c8595" }}>· {p.count} sold</span></span>
+              <span style={{ fontWeight: 600 }}>{money(p.grossMinor, p.currency)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {STATUS_TABS.map((t) => {
+          const active = status === t.key;
+          const c = t.key === "pending" ? counts.pending : counts[t.key];
+          const n = t.key === "all" ? Object.values(counts).reduce((a, b) => a + b, 0) : c ?? 0;
+          return (
+            <Link
+              key={t.key}
+              href={qs({ status: t.key, page: "1" })}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                textDecoration: "none",
+                padding: "6px 11px",
+                borderRadius: 99,
+                color: active ? "#fff" : "#9aa3b2",
+                background: active ? "#6b39e8" : "#181b22",
+                border: "1px solid #262b36",
+              }}
+            >
+              {t.label} ({n})
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <form action="/admin" method="get" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {status !== "all" && <input type="hidden" name="status" value={status} />}
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Search code, email, name, order id…"
+          style={{ flex: 1, padding: "9px 12px", borderRadius: 9, border: "1px solid #2d333f", background: "#0f1115", color: "#e8eaed", fontSize: 13, outline: "none" }}
+        />
+        <button type="submit" style={{ padding: "9px 16px", borderRadius: 9, border: 0, background: "#2d333f", color: "#e2e6ec", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+          Search
+        </button>
+        {(q || status !== "all") && (
+          <Link href="/admin" style={{ padding: "9px 14px", borderRadius: 9, background: "#181b22", border: "1px solid #262b36", color: "#9aa3b2", fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center" }}>
+            Clear
+          </Link>
+        )}
+      </form>
+
       <AdminCards cards={cards} />
+
+      {/* Pagination */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, fontSize: 13, color: "#9aa3b2" }}>
+        <span>{total} result{total === 1 ? "" : "s"} · page {page} of {totalPages}</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <PageLink href={qs({ page: String(page - 1) })} disabled={page <= 1} label="← Prev" />
+          <PageLink href={qs({ page: String(page + 1) })} disabled={page >= totalPages} label="Next →" />
+        </div>
+      </div>
+
+      <InquiryTool />
     </Shell>
   );
 }
+
+function PageLink({ href, disabled, label }: { href: string; disabled: boolean; label: string }) {
+  if (disabled) return <span style={{ padding: "7px 12px", borderRadius: 8, color: "#4a5160", border: "1px solid #20242d" }}>{label}</span>;
+  return (
+    <Link href={href} style={{ padding: "7px 12px", borderRadius: 8, color: "#e2e6ec", border: "1px solid #2d333f", background: "#2d333f", textDecoration: "none" }}>
+      {label}
+    </Link>
+  );
+}
+
+const cardBox: React.CSSProperties = { background: "#181b22", border: "1px solid #262b36", borderRadius: 12, padding: "14px 16px" };
 
 function Shell({ children, nav = true }: { children: React.ReactNode; nav?: boolean }) {
   return (

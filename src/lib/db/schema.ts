@@ -121,6 +121,18 @@ export const adminUsers = pgTable(
 
 export type AdminUser = typeof adminUsers.$inferSelect;
 
+/** Audit trail of admin actions. */
+export const adminAudit = pgTable("admin_audit", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  actor: varchar("actor", { length: 64 }),
+  action: varchar("action", { length: 48 }).notNull(),
+  target: varchar("target", { length: 200 }),
+  detail: text("detail"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AdminAudit = typeof adminAudit.$inferSelect;
+
 /** Simple key/value store for app settings (e.g. enabled payment methods). */
 export const appSettings = pgTable("app_settings", {
   key: varchar("key", { length: 64 }).primaryKey(),

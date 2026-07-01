@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/admin-auth";
+import { getCurrentUser } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { createUser } from "@/lib/users";
+import { audit } from "@/lib/audit";
+import { isSameOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** Admin: create a new admin user. */
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   if (!isDbConfigured()) return NextResponse.json({ error: "Database is not configured" }, { status: 500 });
 
   let body: { username?: unknown; password?: unknown };
@@ -29,5 +33,6 @@ export async function POST(req: NextRequest) {
         : "Username must be 3+ chars and password 6+ chars";
     return NextResponse.json({ error: msg }, { status: 409 });
   }
+  await audit(me.username, "user_created", result.user.username);
   return NextResponse.json({ ok: true, user: result.user });
 }

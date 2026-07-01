@@ -78,6 +78,15 @@ export async function changePassword(
   return { ok: true };
 }
 
+/** Admin reset: set a user's password without knowing the current one. */
+export async function setPassword(userId: string, newPassword: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(adminUsers)
+    .set({ passwordHash: hashPassword(newPassword), updatedAt: new Date() })
+    .where(eq(adminUsers.id, userId));
+}
+
 export async function deleteUser(id: string): Promise<boolean> {
   const db = getDb();
   const rows = await db.delete(adminUsers).where(eq(adminUsers.id, id)).returning();

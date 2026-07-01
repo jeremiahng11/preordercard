@@ -36,6 +36,28 @@ export default function AdminUsers({ users, currentUserId }: { users: UserView[]
     }
   }
 
+  async function resetPw(id: string, uname: string) {
+    const np = window.prompt(`New password for ${uname} (min 6 characters):`);
+    if (!np) return;
+    setBusy(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/admin/users/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, newPassword: np }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not reset password");
+      setMsg(`Password reset for ${uname}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove(id: string) {
     if (!confirm("Delete this user?")) return;
     setBusy(true);
@@ -89,11 +111,16 @@ export default function AdminUsers({ users, currentUserId }: { users: UserView[]
               {u.id === currentUserId && <span style={{ color: "#7ee2a0", fontSize: 11, marginLeft: 8 }}>you</span>}
               <div style={{ color: "#5b6473", fontSize: 11 }}>added {new Date(u.createdAt).toLocaleDateString("en-SG", { dateStyle: "medium" })}</div>
             </div>
-            {u.id !== currentUserId && (
-              <button onClick={() => remove(u.id)} disabled={busy} style={dangerBtn}>
-                Delete
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => resetPw(u.id, u.username)} disabled={busy} style={ghostBtn}>
+                Reset password
               </button>
-            )}
+              {u.id !== currentUserId && (
+                <button onClick={() => remove(u.id)} disabled={busy} style={dangerBtn}>
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -132,6 +159,16 @@ const dangerBtn: React.CSSProperties = {
   border: "1px solid #4a2740",
   background: "#4a2740",
   color: "#ffb0cd",
+  fontWeight: 600,
+  fontSize: 12,
+  cursor: "pointer",
+};
+const ghostBtn: React.CSSProperties = {
+  padding: "7px 12px",
+  borderRadius: 8,
+  border: "1px solid #2d333f",
+  background: "#2d333f",
+  color: "#e2e6ec",
   fontWeight: 600,
   fontSize: 12,
   cursor: "pointer",
