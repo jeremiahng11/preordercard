@@ -103,6 +103,11 @@ export async function setPassword(userId: string, newPassword: string): Promise<
     .where(eq(adminUsers.id, userId));
 }
 
+export async function setRole(userId: string, role: "admin" | "user" | "developer"): Promise<void> {
+  const db = getDb();
+  await db.update(adminUsers).set({ role, updatedAt: new Date() }).where(eq(adminUsers.id, userId));
+}
+
 export async function deleteUser(id: string): Promise<boolean> {
   const db = getDb();
   const rows = await db.delete(adminUsers).where(eq(adminUsers.id, id)).returning();
@@ -114,12 +119,26 @@ export async function recordLogin(userId: string): Promise<void> {
   await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, userId));
 }
 
-/** Seed the first admin user from env on an empty table. */
+/**
+ * Seed the first admin user from env on an empty table, and self-heal on every
+ * boot: the configured ADMIN_USERNAME account is always the root/admin account.
+ * This fixes accounts created before the role column existed (which defaulted to
+ * "user") so the operator can always manage users.
+ */
 export async function ensureSeedUser(): Promise<void> {
   const password = process.env.ADMIN_PASSWORD;
   if (!password) return;
-  if ((await countUsers()) > 0) return;
   const username = normalizeUsername(process.env.ADMIN_USERNAME || "admin");
-  await createUser(username, password, "admin");
-  console.log(`[seed] created initial admin user "${username}"`);
+
+  if ((await countUsers()) === 0) {
+    await createUser(username, password, "admin");
+    console.log(`[seed] created initial admin (root) user "${username}"`);
+    return;
+  }
+
+  const existing = await getUserByUsername(username);
+  if (existing && existing.role !== "admin") {
+    await setRole(existing.id, "admin");
+    console.log(`[seed] promoted "${username}" to admin (root)`);
+  }
 }

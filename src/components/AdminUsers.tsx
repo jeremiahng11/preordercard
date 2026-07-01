@@ -107,7 +107,7 @@ export default function AdminUsers({
               <select style={input} value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
                 <option value="user">User (staff)</option>
                 <option value="developer">Developer (read-only + API keys)</option>
-                <option value="admin">Admin (manages users)</option>
+                <option value="admin">Root (full control)</option>
               </select>
             </div>
             <button onClick={create} disabled={busy || !username || password.length < 6} style={primaryBtn}>
@@ -118,7 +118,7 @@ export default function AdminUsers({
             {role === "developer"
               ? "Developers can view everything but change nothing. They get sandbox + production API keys automatically."
               : role === "admin"
-                ? "Admins can manage users and settings."
+                ? "Root can manage users, settings and everything else."
                 : "Staff users can manage cards, products and settings, but not other users."}
             {" "}Share the temporary password — they can change it under Account after logging in.
           </p>
@@ -127,7 +127,7 @@ export default function AdminUsers({
         </div>
       ) : (
         <p style={{ color: "#7c8595", fontSize: 13, marginBottom: 4 }}>
-          You can view the team here. Only admins can add or remove users.
+          You can view the team here. Only Root can add or remove users.
         </p>
       )}
 
@@ -149,7 +149,7 @@ export default function AdminUsers({
                   textTransform: "uppercase",
                 }}
               >
-                {u.role}
+                {u.role === "admin" ? "root" : u.role}
               </span>
               {u.id === currentUserId && <span style={{ color: "#7ee2a0", fontSize: 11, marginLeft: 8 }}>you</span>}
               <div style={{ color: "#5b6473", fontSize: 11, marginTop: 2 }}>
