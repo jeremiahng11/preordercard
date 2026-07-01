@@ -134,7 +134,7 @@ export async function generatePaynowQrc(
 ): Promise<QrcResult> {
   // Body shape required by the PayNow genQrc API (fields per its error message):
   // tid, mid, channel, txnType, merCode, qrcType — plus order/amount/callback.
-  const res = await call<Record<string, unknown> & { data?: Record<string, unknown> }>(cfg, cfg.genQrcPath, {
+  const reqBody = {
     merCode: cfg.merchantCode,
     mid: cfg.mid,
     tid: cfg.tid,
@@ -145,7 +145,9 @@ export async function generatePaynowQrc(
     merTransAmt: String(params.amountMinor),
     expiryTime: expiryTime(30),
     webhook: params.webhook,
-  });
+  };
+  console.log("[paynow] genQrc request:", JSON.stringify(reqBody));
+  const res = await call<Record<string, unknown> & { data?: Record<string, unknown> }>(cfg, cfg.genQrcPath, reqBody);
 
   console.log("[paynow] genQrc response:", JSON.stringify(res).slice(0, 1500));
 
