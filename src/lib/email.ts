@@ -85,12 +85,14 @@ function recipientHtml(d: GiftEmailData): string {
 function buyerHtml(d: GiftEmailData): string {
   const dn = cardName(d);
   const amount = formatAmount(d.amountMinor, d.currency);
+  const to = d.recipientName ? escape(d.recipientName) : "your friend";
   return shell(`
-    <h1 style="font-size:20px;margin:0 0 6px;color:#2C2433">Thanks for your purchase! 🎀</h1>
-    <p style="color:#9087A0;font-size:14px;margin:0 0 4px">Your Cinnamoroll Visa Platinum gift card (<b>${escape(dn)}</b>) has been sent${d.recipientName ? ` to <b style="color:#2C2433">${escape(d.recipientName)}</b>` : ""}.</p>
+    <h1 style="font-size:20px;margin:0 0 6px;color:#2C2433">Your gift is on its way! 🎀</h1>
+    <p style="color:#9087A0;font-size:14px;margin:0 0 4px">You sent a Cinnamoroll Visa Platinum gift card (<b>${escape(dn)}</b>) to <b style="color:#2C2433">${to}</b>. We've emailed them the redemption code.</p>
     <p style="color:#9087A0;font-size:14px;margin:0 0 4px">Amount paid: <b style="color:#2C2433">${amount}</b></p>
     ${codeBox(d.code)}
-    <p style="color:#9087A0;font-size:13px;margin:0">We've emailed the code to the recipient. Keep this for your records.</p>
+    <p style="color:#9087A0;font-size:13px;margin:0 0 2px">Here's the code too, in case they need a hand. Keep this email for your records.</p>
+    ${storeButtons()}
   `);
 }
 
@@ -107,8 +109,12 @@ export async function sendGiftEmails(d: GiftEmailData): Promise<void> {
       sendOne(d.recipientEmail, `🎀 ${from} sent you a Cinnamoroll Visa gift card!`, recipientHtml(d)),
     );
   }
+  // Email the sender/buyer too (their own confirmation + code + receipt).
   if (d.buyerEmail) {
-    tasks.push(sendOne(d.buyerEmail, "Your Cinnamoroll gift card receipt", buyerHtml(d)));
+    const subject = d.recipientName
+      ? `🎀 Your Cinnamoroll gift to ${d.recipientName} is on its way!`
+      : "🎀 Your Cinnamoroll gift is on its way!";
+    tasks.push(sendOne(d.buyerEmail, subject, buyerHtml(d)));
   }
   const results = await Promise.allSettled(tasks);
   results.forEach((r) => {
