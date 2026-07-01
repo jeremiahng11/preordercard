@@ -145,7 +145,6 @@ export async function generatePaynowQrc(
     merTransAmt: String(params.amountMinor),
     expiryTime: expiryTime(30),
     webhook: params.webhook,
-    notifyUrl: params.webhook,
   });
 
   console.log("[paynow] genQrc response:", JSON.stringify(res).slice(0, 1500));
