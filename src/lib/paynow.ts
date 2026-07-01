@@ -99,6 +99,7 @@ export interface QrcResult {
   resultCode?: string;
   resultMsg?: string;
   apTransId?: string;
+  raw?: unknown; // full parsed response, for diagnostics
 }
 
 /** Generate a PayNow QR for an order. */
@@ -130,12 +131,14 @@ export async function generatePaynowQrc(
   const qrString = d.qrString || d.qrCode || d.qrContent || d.emvco || d.qrcContent;
   const status = res.result?.resultStatus ?? d.paymentResult?.resultStatus;
   const ok = Boolean(qrString) && status !== "F";
+  console.log("[paynow] genQrc response:", JSON.stringify(res).slice(0, 1500));
   return {
     ok,
     qrString,
     apTransId: d.apTransId,
     resultCode: res.result?.resultCode ?? d.paymentResult?.resultCode,
     resultMsg: res.result?.resultMsg ?? d.paymentResult?.resultMsg,
+    raw: res,
   };
 }
 

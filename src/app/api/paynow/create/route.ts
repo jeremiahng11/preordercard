@@ -67,8 +67,20 @@ export async function POST(req: NextRequest) {
       webhook: `${baseUrl}/api/webhook`,
     });
     if (!qrc.ok || !qrc.qrString) {
+      const raw = (() => {
+        try {
+          return JSON.stringify(qrc.raw).slice(0, 600);
+        } catch {
+          return undefined;
+        }
+      })();
+      console.error("[paynow] genQrc not ok:", raw);
       return NextResponse.json(
-        { error: "Could not generate the PayNow QR", resultCode: qrc.resultCode, detail: qrc.resultMsg },
+        {
+          error: "Could not generate the PayNow QR",
+          resultCode: qrc.resultCode,
+          detail: qrc.resultMsg || raw,
+        },
         { status: 502 },
       );
     }
