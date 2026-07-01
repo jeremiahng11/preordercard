@@ -22,6 +22,11 @@ export interface PaynowConfig {
   publicKeyPem: string | null;
   genQrcPath: string;
   inquiryPath: string;
+  // genQrc required body params (confirm exact values against the PayNow doc):
+  tid: string;
+  channel: string;
+  txnType: string;
+  qrcType: string;
 }
 
 export function getPaynowConfig(): PaynowConfig {
@@ -39,6 +44,10 @@ export function getPaynowConfig(): PaynowConfig {
       : null,
     genQrcPath: process.env.ALETA_PAYNOW_GENQRC_PATH || "/qrc/v1/paynow/genQrc",
     inquiryPath: process.env.ALETA_PAYNOW_INQUIRY_PATH || "/qrc/v1/paynow/inquiry",
+    tid: process.env.ALETA_PAYNOW_TID || "",
+    channel: process.env.ALETA_PAYNOW_CHANNEL || "PAYNOW",
+    txnType: process.env.ALETA_PAYNOW_TXNTYPE || "SALE",
+    qrcType: process.env.ALETA_PAYNOW_QRCTYPE || "12",
   };
 }
 
@@ -102,42 +111,57 @@ export interface QrcResult {
   raw?: unknown; // full parsed response, for diagnostics
 }
 
+const QR_FIELDS = ["qrCode", "qrString", "qrContent", "qrcContent", "emvco", "qrData", "qrPayload", "codeUrl", "qrUrl", "payload"] as const;
+
+function findQr(obj: Record<string, unknown> | undefined): string | undefined {
+  if (!obj) return undefined;
+  for (const f of QR_FIELDS) {
+    const v = obj[f];
+    if (typeof v === "string" && v.length > 8) return v;
+  }
+  return undefined;
+}
+
+function isSuccessCode(code: string | undefined): boolean {
+  if (!code) return false;
+  return ["S00", "0000", "00", "000", "SUCCESS"].includes(code);
+}
+
 /** Generate a PayNow QR for an order. */
 export async function generatePaynowQrc(
   cfg: PaynowConfig,
   params: { merOrderId: string; amountMinor: number; webhook: string },
 ): Promise<QrcResult> {
-  // ── GUESSED REQUEST BODY — confirm field names against the PayNow doc ──
-  const res = await call<{
-    result?: AletaResult;
-    data?: {
-      paymentResult?: AletaResult;
-      apTransId?: string;
-      // any of these may carry the QR payload depending on the doc:
-      qrString?: string;
-      qrCode?: string;
-      qrContent?: string;
-      emvco?: string;
-      qrcContent?: string;
-    };
-  }>(cfg, cfg.genQrcPath, {
+  // Body shape required by the PayNow genQrc API (fields per its error message):
+  // tid, mid, channel, txnType, merCode, qrcType — plus order/amount/callback.
+  const res = await call<Record<string, unknown> & { data?: Record<string, unknown> }>(cfg, cfg.genQrcPath, {
+    merCode: cfg.merchantCode,
+    mid: cfg.mid,
+    tid: cfg.tid,
+    channel: cfg.channel,
+    txnType: cfg.txnType,
+    qrcType: cfg.qrcType,
     merOrderId: params.merOrderId,
     merTransAmt: String(params.amountMinor),
-    webhook: params.webhook,
     expiryTime: expiryTime(30),
+    webhook: params.webhook,
+    notifyUrl: params.webhook,
   });
 
-  const d = res.data ?? {};
-  const qrString = d.qrString || d.qrCode || d.qrContent || d.emvco || d.qrcContent;
-  const status = res.result?.resultStatus ?? d.paymentResult?.resultStatus;
-  const ok = Boolean(qrString) && status !== "F";
   console.log("[paynow] genQrc response:", JSON.stringify(res).slice(0, 1500));
+
+  const data = (res.data as Record<string, unknown> | undefined) ?? undefined;
+  const qrString = findQr(res) || findQr(data);
+  const respCode = (res.respCode as string) ?? (res.result as AletaResult | undefined)?.resultCode;
+  const respMsg = (res.respMsg as string) ?? (res.result as AletaResult | undefined)?.resultMsg;
+  const ok = Boolean(qrString) && (isSuccessCode(respCode) || respCode === undefined);
+
   return {
     ok,
     qrString,
-    apTransId: d.apTransId,
-    resultCode: res.result?.resultCode ?? d.paymentResult?.resultCode,
-    resultMsg: res.result?.resultMsg ?? d.paymentResult?.resultMsg,
+    apTransId: (res.apTransId as string) ?? (data?.apTransId as string),
+    resultCode: respCode,
+    resultMsg: respMsg,
     raw: res,
   };
 }
