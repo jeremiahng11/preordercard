@@ -34,22 +34,15 @@ const CODE_RE = /^CNR-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
  * Visa Platinum card to the user at $0.
  */
 export async function POST(req: NextRequest) {
-  const auth = checkApiKey(req);
-  if (!auth.configured) {
-    return NextResponse.json(
-      { valid: false, reason: "SERVER_MISCONFIGURED", message: "REDEEM_API_KEY is not set" },
-      { status: 500 },
-    );
-  }
-  if (!auth.ok) {
-    return NextResponse.json({ valid: false, reason: "UNAUTHORIZED" }, { status: 401 });
-  }
-
   if (!isDbConfigured()) {
     return NextResponse.json(
       { valid: false, reason: "SERVER_MISCONFIGURED", message: "DATABASE_URL is not set" },
       { status: 500 },
     );
+  }
+  const auth = await checkApiKey(req);
+  if (!auth.ok) {
+    return NextResponse.json({ valid: false, reason: "UNAUTHORIZED" }, { status: 401 });
   }
 
   let body: Record<string, unknown>;
@@ -70,13 +63,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await redeemByCode(code, userRef);
+    const result = await redeemByCode(code, userRef, auth.environment);
 
     if (result.ok && result.card) {
       const c = result.card;
       return NextResponse.json({
         valid: true,
         status: "redeemed",
+        environment: auth.environment,
         code: c.code,
         amount: c.amountMinor,
         currency: c.currency,

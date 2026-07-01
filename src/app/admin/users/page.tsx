@@ -28,7 +28,7 @@ export default async function AdminUsersPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        <AdminNav />
+        <AdminNav role={me.role} />
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 18px" }}>Users</h1>
         {dbError ? <p style={{ color: "#ff9fc0" }}>{dbError}</p> : <AdminUsers users={users} currentUserId={me.id} isAdmin={me.role === "admin"} />}
       </div>

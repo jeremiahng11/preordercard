@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
   if (!me) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (me.role === "developer") {
+    return NextResponse.json({ error: "Developer accounts are read-only" }, { status: 403 });
+  }
   if (!isSameOrigin(req)) {
     return NextResponse.json({ error: "Bad origin" }, { status: 403 });
   }

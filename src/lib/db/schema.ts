@@ -22,6 +22,7 @@ export const giftCards = pgTable(
     currency: varchar("currency", { length: 3 }).notNull(),
     designId: varchar("design_id", { length: 48 }).notNull(),
     productName: varchar("product_name", { length: 120 }),
+    environment: varchar("environment", { length: 12 }).notNull().default("production"), // production | sandbox
 
     recipientName: varchar("recipient_name", { length: 120 }),
     recipientEmail: varchar("recipient_email", { length: 200 }),
@@ -124,6 +125,21 @@ export const adminUsers = pgTable(
 );
 
 export type AdminUser = typeof adminUsers.$inferSelect;
+
+/** Per-developer API keys (sandbox + production) for the redemption API. */
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id", { length: 36 }).notNull(),
+    environment: varchar("environment", { length: 12 }).notNull(), // sandbox | production
+    key: varchar("key", { length: 80 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ keyUq: uniqueIndex("api_keys_key_uq").on(t.key) }),
+);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
 
 /** Audit trail of admin actions. */
 export const adminAudit = pgTable("admin_audit", {

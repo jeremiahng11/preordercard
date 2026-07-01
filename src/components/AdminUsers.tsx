@@ -143,7 +143,7 @@ export default function AdminUsers({
               </span>
               {u.id === currentUserId && <span style={{ color: "#7ee2a0", fontSize: 11, marginLeft: 8 }}>you</span>}
               <div style={{ color: "#5b6473", fontSize: 11, marginTop: 2 }}>
-                last login: {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short" }) : "never"}
+                last login: {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Singapore" }) : "never"}
               </div>
             </div>
             {isAdmin && (

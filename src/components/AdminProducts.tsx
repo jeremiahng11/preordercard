@@ -42,9 +42,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
 export default function AdminProducts({
   products,
   collections,
+  canWrite = true,
 }: {
   products: ProductView[];
   collections: CollectionOption[];
+  canWrite?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -79,16 +81,16 @@ export default function AdminProducts({
         </div>
       )}
 
-      {collections.length === 0 && (
+      {canWrite && collections.length === 0 && (
         <div style={{ background: "#3a3320", color: "#f4d58d", padding: "10px 14px", borderRadius: 8, marginBottom: 14, fontSize: 13 }}>
           Create a collection first, then add cards to it.
         </div>
       )}
-      <AddProduct busy={busy} collections={collections} onCreate={(p) => call("/api/admin/products", p)} />
+      {canWrite && <AddProduct busy={busy} collections={collections} onCreate={(p) => call("/api/admin/products", p)} />}
 
       <div style={{ display: "grid", gap: 14, marginTop: 20 }}>
         {products.map((p) => (
-          <ProductRow key={p.id} product={p} collections={collections} busy={busy} call={call} />
+          <ProductRow key={p.id} product={p} collections={collections} busy={busy} call={call} canWrite={canWrite} />
         ))}
       </div>
     </div>
@@ -205,11 +207,13 @@ function ProductRow({
   collections,
   busy,
   call,
+  canWrite,
 }: {
   product: ProductView;
   collections: CollectionOption[];
   busy: boolean;
   call: (url: string, payload: unknown) => Promise<boolean>;
+  canWrite: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(product.name);
@@ -313,6 +317,7 @@ function ProductRow({
               </div>
               <div style={{ color: "#5b6473", fontSize: 11, marginTop: 2 }}>slug: {product.slug}</div>
 
+              {canWrite && (
               <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => setEditing(true)} disabled={busy} style={ghostBtn}>
                   Edit
@@ -333,6 +338,7 @@ function ProductRow({
                   </button>
                 )}
               </div>
+              )}
             </>
           )}
         </div>

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { isAdminAuthed, isAdminConfigured } from "@/lib/admin-auth";
+import { getCurrentUser, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { listAllProducts } from "@/lib/products";
 import { listAllCollections } from "@/lib/collections";
@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
   if (!isAdminConfigured()) redirect("/admin");
-  if (!(await isAdminAuthed())) redirect("/admin/login");
+  const me = await getCurrentUser();
+  if (!me) redirect("/admin/login");
+  const canWrite = me.role !== "developer";
 
   let products: ProductView[] = [];
   let collections: CollectionOption[] = [];
@@ -44,9 +46,9 @@ export default async function AdminProductsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        <AdminNav />
+        <AdminNav role={me.role} />
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 18px" }}>Card products</h1>
-        {dbError ? <p style={{ color: "#ff9fc0" }}>{dbError}</p> : <AdminProducts products={products} collections={collections} />}
+        {dbError ? <p style={{ color: "#ff9fc0" }}>{dbError}</p> : <AdminProducts products={products} collections={collections} canWrite={canWrite} />}
       </div>
     </div>
   );

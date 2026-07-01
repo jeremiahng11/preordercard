@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { isAdminAuthed, isAdminConfigured } from "@/lib/admin-auth";
+import { getCurrentUser, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { countByStatus, listCardsPaged, salesByProduct, salesSummary } from "@/lib/giftcards";
 import AdminCards, { type CardView } from "@/components/AdminCards";
@@ -39,11 +39,13 @@ export default async function AdminDashboard({
       </Shell>
     );
   }
-  if (!(await isAdminAuthed())) redirect("/admin/login");
+  const me = await getCurrentUser();
+  if (!me) redirect("/admin/login");
+  const canWrite = me.role !== "developer";
 
   if (!isDbConfigured()) {
     return (
-      <Shell>
+      <Shell role={me.role}>
         <p style={{ color: "#ff9fc0" }}>
           Database is not configured. Set <code>DATABASE_URL</code> to view purchased codes.
         </p>
@@ -96,7 +98,7 @@ export default async function AdminDashboard({
   };
 
   return (
-    <Shell>
+    <Shell role={me.role}>
       <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>Dashboard</h1>
       <p style={{ color: "#7c8595", fontSize: 13, margin: "0 0 18px" }}>Sales overview and purchased codes.</p>
 
@@ -171,7 +173,7 @@ export default async function AdminDashboard({
         )}
       </form>
 
-      <AdminCards cards={cards} />
+      <AdminCards cards={cards} canWrite={canWrite} />
 
       {/* Pagination */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, fontSize: 13, color: "#9aa3b2" }}>
@@ -198,11 +200,11 @@ function PageLink({ href, disabled, label }: { href: string; disabled: boolean; 
 
 const cardBox: React.CSSProperties = { background: "#181b22", border: "1px solid #262b36", borderRadius: 12, padding: "14px 16px" };
 
-function Shell({ children, nav = true }: { children: React.ReactNode; nav?: boolean }) {
+function Shell({ children, nav = true, role = "user" }: { children: React.ReactNode; nav?: boolean; role?: string }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        {nav && <AdminNav />}
+        {nav && <AdminNav role={role} />}
         {children}
       </div>
     </div>

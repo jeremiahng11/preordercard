@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminAuditPage() {
   if (!isAdminConfigured()) redirect("/admin");
-  if (!(await getCurrentUser())) redirect("/admin/login");
+  const me = await getCurrentUser();
+  if (!me) redirect("/admin/login");
 
   let rows: Awaited<ReturnType<typeof listAudit>> = [];
   let dbError: string | null = null;
@@ -29,7 +30,7 @@ export default async function AdminAuditPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        <AdminNav />
+        <AdminNav role={me.role} />
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 18px" }}>Audit log</h1>
         {dbError ? (
           <p style={{ color: "#ff9fc0" }}>{dbError}</p>
@@ -51,7 +52,7 @@ export default async function AdminAuditPage() {
                 {rows.map((r) => (
                   <tr key={r.id}>
                     <td style={{ ...cell, whiteSpace: "nowrap", color: "#aeb6c2" }}>
-                      {r.createdAt.toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short" })}
+                      {r.createdAt.toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Singapore" })}
                     </td>
                     <td style={cell}>{r.actor ?? "—"}</td>
                     <td style={{ ...cell, fontFamily: "ui-monospace, monospace" }}>{r.action}</td>

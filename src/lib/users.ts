@@ -54,7 +54,7 @@ export type CreateUserResult = { ok: true; user: PublicUser } | { ok: false; rea
 export async function createUser(
   username: string,
   password: string,
-  role: "admin" | "user" = "user",
+  role: "admin" | "user" | "developer" = "user",
 ): Promise<CreateUserResult> {
   const uname = normalizeUsername(username);
   if (uname.length < 3 || password.length < 6) return { ok: false, reason: "INVALID" };

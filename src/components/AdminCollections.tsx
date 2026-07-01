@@ -15,7 +15,7 @@ export type CollectionView = {
   comingSoonDate: string | null;
 };
 
-export default function AdminCollections({ collections }: { collections: CollectionView[] }) {
+export default function AdminCollections({ collections, canWrite = true }: { collections: CollectionView[]; canWrite?: boolean }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,10 +48,10 @@ export default function AdminCollections({ collections }: { collections: Collect
           {error}
         </div>
       )}
-      <AddCollection busy={busy} onCreate={(p) => call("/api/admin/collections", p)} />
+      {canWrite && <AddCollection busy={busy} onCreate={(p) => call("/api/admin/collections", p)} />}
       <div style={{ display: "grid", gap: 14, marginTop: 20 }}>
         {collections.map((c) => (
-          <CollectionRow key={c.id} c={c} busy={busy} call={call} />
+          <CollectionRow key={c.id} c={c} busy={busy} call={call} canWrite={canWrite} />
         ))}
       </div>
     </div>
@@ -105,10 +105,12 @@ function CollectionRow({
   c,
   busy,
   call,
+  canWrite,
 }: {
   c: CollectionView;
   busy: boolean;
   call: (url: string, payload: unknown) => Promise<boolean>;
+  canWrite: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [f, setF] = useState<CopyFields>({
@@ -155,6 +157,7 @@ function CollectionRow({
           {c.title && <div style={{ fontSize: 15, fontWeight: 600, marginTop: 2 }}>{c.title}</div>}
           {c.description && <div style={{ color: "#aeb6c2", fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>{c.description}</div>}
           <div style={{ color: "#5b6473", fontSize: 11, marginTop: 6 }}>slug: {c.slug}</div>
+          {canWrite && (
           <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
             <button onClick={() => setEditing(true)} disabled={busy} style={ghostBtn}>Edit copy</button>
             {c.status === "active" ? (
@@ -163,6 +166,7 @@ function CollectionRow({
               <button onClick={() => call("/api/admin/collections/status", { id: c.id, status: "active" })} disabled={busy} style={ghostBtn}>Show</button>
             )}
           </div>
+          )}
         </>
       )}
     </div>

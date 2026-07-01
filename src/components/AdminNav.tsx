@@ -8,16 +8,17 @@ const ITEMS = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/collections", label: "Collections" },
   { href: "/admin/products", label: "Products" },
-  { href: "/admin/settings", label: "Settings" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/audit", label: "Audit" },
+  { href: "/admin/api-keys", label: "API keys" },
   { href: "/admin/api-docs", label: "API docs" },
   { href: "/admin/account", label: "Account" },
 ];
 
-export default function AdminNav() {
+export default function AdminNav({ role = "user" }: { role?: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const canSettings = role === "admin" || role === "user";
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -43,6 +44,11 @@ export default function AdminNav() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={ADV_LOGO} alt="Aleta Adventure" style={{ height: 28, width: "auto" }} />
           <span style={{ fontWeight: 800, fontSize: 16 }}>Gift Card Admin</span>
+          {role === "developer" && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#8fc1ff", background: "#1c2c44", padding: "2px 7px", borderRadius: 99, textTransform: "uppercase" }}>
+              read-only
+            </span>
+          )}
         </Link>
         <nav style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {ITEMS.map((it) => {
@@ -67,21 +73,35 @@ export default function AdminNav() {
           })}
         </nav>
       </div>
-      <button
-        onClick={logout}
-        style={{
-          padding: "8px 14px",
-          borderRadius: 8,
-          border: "1px solid #2d333f",
-          background: "#2d333f",
-          color: "#e2e6ec",
-          fontWeight: 600,
-          fontSize: 13,
-          cursor: "pointer",
-        }}
-      >
-        Sign out
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {canSettings && (
+          <Link
+            href="/admin/settings"
+            aria-label="Settings"
+            title="Settings"
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              border: "1px solid #2d333f",
+              background: pathname === "/admin/settings" ? "#242a36" : "transparent",
+              color: "#c4cbd6",
+              textDecoration: "none",
+              fontSize: 17,
+            }}
+          >
+            ⚙️
+          </Link>
+        )}
+        <button
+          onClick={logout}
+          style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #2d333f", background: "#2d333f", color: "#e2e6ec", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }

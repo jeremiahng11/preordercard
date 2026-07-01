@@ -17,15 +17,12 @@ const CODE_RE = /^CNR-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
  * Does NOT redeem. `redeemable` is true only for paid, un-redeemed cards.
  */
 export async function GET(req: NextRequest) {
-  const auth = checkApiKey(req);
-  if (!auth.configured) {
-    return NextResponse.json({ valid: false, reason: "SERVER_MISCONFIGURED" }, { status: 500 });
-  }
-  if (!auth.ok) {
-    return NextResponse.json({ valid: false, reason: "UNAUTHORIZED" }, { status: 401 });
-  }
   if (!isDbConfigured()) {
     return NextResponse.json({ valid: false, reason: "SERVER_MISCONFIGURED" }, { status: 500 });
+  }
+  const auth = await checkApiKey(req);
+  if (!auth.ok) {
+    return NextResponse.json({ valid: false, reason: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const code = (req.nextUrl.searchParams.get("code") ?? "").trim().toUpperCase();
@@ -37,7 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const card = await getByCode(code);
+    const card = await getByCode(code, auth.environment);
     if (!card) {
       return NextResponse.json({ valid: false, redeemable: false, reason: "NOT_FOUND" }, { status: 404 });
     }
@@ -45,6 +42,7 @@ export async function GET(req: NextRequest) {
       valid: true,
       redeemable: card.status === "active",
       status: card.status,
+      environment: auth.environment,
       amount: card.amountMinor,
       currency: card.currency,
       design: card.designId,

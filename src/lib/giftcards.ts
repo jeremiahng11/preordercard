@@ -18,6 +18,7 @@ export interface CreateActiveInput {
   currency: string;
   designId: string;
   productName?: string | null;
+  environment?: string; // production | sandbox (default production)
   recipientName?: string | null;
   recipientEmail?: string | null;
   senderName?: string | null;
@@ -42,7 +43,13 @@ export async function createActiveCard(
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateGiftCode();
-    const row: NewGiftCard = { ...input, code, status: "active", paidAt: new Date() };
+    const row: NewGiftCard = {
+      ...input,
+      environment: input.environment ?? "production",
+      code,
+      status: "active",
+      paidAt: new Date(),
+    };
     try {
       const inserted = await db
         .insert(giftCards)
@@ -68,9 +75,12 @@ export async function getByMerOrderId(merOrderId: string): Promise<GiftCard | nu
   return row ?? null;
 }
 
-export async function getByCode(code: string): Promise<GiftCard | null> {
+export async function getByCode(code: string, environment?: string): Promise<GiftCard | null> {
   const db = getDb();
-  const [row] = await db.select().from(giftCards).where(eq(giftCards.code, code)).limit(1);
+  const where = environment
+    ? and(eq(giftCards.code, code), eq(giftCards.environment, environment))
+    : eq(giftCards.code, code);
+  const [row] = await db.select().from(giftCards).where(where).limit(1);
   return row ?? null;
 }
 
@@ -220,18 +230,20 @@ export interface RedeemResult {
  * Atomically redeem a code — the single conditional UPDATE guarantees exactly
  * one successful redemption even under concurrent requests.
  */
-export async function redeemByCode(code: string, redeemedBy?: string): Promise<RedeemResult> {
+export async function redeemByCode(code: string, redeemedBy?: string, environment?: string): Promise<RedeemResult> {
   const db = getDb();
+  const conds = [eq(giftCards.code, code), eq(giftCards.status, "active")];
+  if (environment) conds.push(eq(giftCards.environment, environment));
   const [burned] = await db
     .update(giftCards)
     .set({ status: "redeemed", redeemedAt: new Date(), ...(redeemedBy ? { redeemedBy } : {}) })
-    .where(and(eq(giftCards.code, code), eq(giftCards.status, "active")))
+    .where(and(...conds))
     .returning();
 
   if (burned) return { ok: true, card: burned };
 
   // Determine why it failed.
-  const existing = await getByCode(code);
+  const existing = await getByCode(code, environment);
   if (!existing) return { ok: false, reason: "NOT_FOUND" };
   if (existing.status === "pending") return { ok: false, reason: "NOT_PAID" };
   if (existing.status === "redeemed") return { ok: false, reason: "ALREADY_REDEEMED", card: existing };

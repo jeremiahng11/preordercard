@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { createUser } from "@/lib/users";
+import { createKeysForUser } from "@/lib/apikeys";
 import { audit } from "@/lib/audit";
 import { isSameOrigin } from "@/lib/security";
 
@@ -25,9 +26,9 @@ export async function POST(req: NextRequest) {
 
   const username = typeof body.username === "string" ? body.username : "";
   const password = typeof body.password === "string" ? body.password : "";
-  const role = body.role === "admin" ? "admin" : "user";
+  const role = body.role === "admin" || body.role === "developer" ? body.role : "user";
 
-  const result = await createUser(username, password, role);
+  const result = await createUser(username, password, role as "admin" | "user" | "developer");
   if (!result.ok) {
     const msg =
       result.reason === "USERNAME_TAKEN"
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest) {
         : "Username must be 3+ chars and password 6+ chars";
     return NextResponse.json({ error: msg }, { status: 409 });
   }
-  await audit(me.username, "user_created", result.user.username);
+  // Developers get sandbox + production API keys.
+  if (role === "developer") await createKeysForUser(result.user.id);
+  await audit(me.username, "user_created", result.user.username, `role=${role}`);
   return NextResponse.json({ ok: true, user: result.user });
 }

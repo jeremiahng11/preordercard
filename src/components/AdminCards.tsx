@@ -35,10 +35,10 @@ function money(minor: number, currency: string) {
 function when(iso: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Singapore" });
 }
 
-export default function AdminCards({ cards }: { cards: CardView[] }) {
+export default function AdminCards({ cards, canWrite = true }: { cards: CardView[]; canWrite?: boolean }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -143,22 +143,23 @@ export default function AdminCards({ cards }: { cards: CardView[] }) {
                     </td>
                     <td style={{ ...cell, whiteSpace: "nowrap", color: "#aeb6c2" }}>{when(c.redeemedAt)}</td>
                     <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>
-                      {canRevoke && (
+                      {!canWrite && <span style={{ color: "#5b6473" }}>—</span>}
+                      {canWrite && canRevoke && (
                         <button onClick={() => act(c.id, "revoke")} disabled={busy} style={btn("#2d333f")}>
                           Revoke
                         </button>
                       )}
-                      {canRefund && (
+                      {canWrite && canRefund && (
                         <button onClick={() => act(c.id, "resend")} disabled={busy} style={btn("#2d333f")}>
                           Resend
                         </button>
                       )}
-                      {canRefund && (
+                      {canWrite && canRefund && (
                         <button onClick={() => act(c.id, "refund")} disabled={busy} style={btn("#4a2740", "#ffb0cd")}>
                           Refund
                         </button>
                       )}
-                      {!canRevoke && !canRefund && <span style={{ color: "#5b6473" }}>—</span>}
+                      {canWrite && !canRevoke && !canRefund && <span style={{ color: "#5b6473" }}>—</span>}
                     </td>
                   </tr>
                 );

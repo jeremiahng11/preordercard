@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { isAdminAuthed, isAdminConfigured } from "@/lib/admin-auth";
+import { getCurrentUser, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
 import { getPaymentMethods } from "@/lib/settings";
 import AdminSettings from "@/components/AdminSettings";
@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
   if (!isAdminConfigured()) redirect("/admin");
-  if (!(await isAdminAuthed())) redirect("/admin/login");
+  const me = await getCurrentUser();
+  if (!me) redirect("/admin/login");
+  // Only admin and user roles can change settings; developers are read-only.
+  if (me.role === "developer") redirect("/admin");
 
   let card = true;
   let paynow = true;
@@ -30,7 +33,7 @@ export default async function AdminSettingsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        <AdminNav />
+        <AdminNav role={me.role} />
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 18px" }}>Settings</h1>
         {dbError ? <p style={{ color: "#ff9fc0" }}>{dbError}</p> : <AdminSettings card={card} paynow={paynow} />}
       </div>
