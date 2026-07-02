@@ -100,16 +100,18 @@ export interface EmailResult {
 function shell(inner: string): string {
   return `<div style="font-family:'Segoe UI',system-ui,sans-serif;background:#FBF5F8;padding:24px">
   <div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #EFE3EC;border-radius:20px;overflow:hidden">
-    <div style="background:linear-gradient(135deg,#E84E7E,#B79BF0);padding:18px 22px;color:#fff;font-weight:800;font-size:18px">Aleta Adventure</div>
+    <div style="background-color:#CC4E8E;background:linear-gradient(135deg,#E84E7E,#B79BF0);padding:18px 22px;color:#ffffff;font-weight:800;font-size:18px">Aleta Adventure</div>
     <div style="padding:22px">${inner}</div>
   </div>
 </div>`;
 }
 
 function codeBox(code: string): string {
-  return `<div style="background:linear-gradient(135deg,#2C2433,#43344E);border-radius:14px;padding:16px;text-align:center;margin:16px 0">
+  // background-color is a solid fallback for Outlook (Word engine ignores CSS
+  // gradients — without it the box renders white and the white code vanishes).
+  return `<div style="background-color:#2C2433;background:linear-gradient(135deg,#2C2433,#43344E);border-radius:14px;padding:16px;text-align:center;margin:16px 0">
     <div style="font-size:10px;letter-spacing:1.5px;color:#C9B8F4;text-transform:uppercase;font-weight:700;margin-bottom:6px">Redemption code</div>
-    <div style="font-family:monospace;font-size:22px;letter-spacing:3px;color:#fff;font-weight:700">${code}</div>
+    <div style="font-family:'Courier New',monospace;font-size:22px;letter-spacing:3px;color:#ffffff;font-weight:700">${code}</div>
   </div>`;
 }
 
