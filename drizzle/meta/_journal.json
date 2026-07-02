@@ -71,6 +71,13 @@
       "when": 1782891080363,
       "tag": "0009_overjoyed_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782976108810,
+      "tag": "0010_scheduled_delivery",
+      "breakpoints": true
     }
   ]
 }

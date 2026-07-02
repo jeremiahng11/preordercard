@@ -27,6 +27,16 @@ export interface GiftEmailData {
   message: string | null;
   /** Front-art data URL. If omitted, it's looked up from the product by designId. */
   image?: string | null;
+  /** Scheduled recipient delivery date (shown on the buyer receipt when set). */
+  deliverAt?: Date | string | null;
+}
+
+/** Format a scheduled delivery date in SGT, or null if not a future date. */
+function scheduledLabel(deliverAt: Date | string | null | undefined): string | null {
+  if (!deliverAt) return null;
+  const d = deliverAt instanceof Date ? deliverAt : new Date(deliverAt);
+  if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return null;
+  return d.toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Singapore" });
 }
 
 type Attachment = { filename: string; content: Buffer; contentType: string; cid: string };
@@ -159,9 +169,13 @@ function buyerHtml(d: GiftEmailData, hasImage: boolean): string {
   const dn = cardName(d);
   const amount = formatAmount(d.amountMinor, d.currency);
   const to = d.recipientName ? escape(d.recipientName) : "your friend";
+  const scheduled = scheduledLabel(d.deliverAt);
+  const delivery = scheduled
+    ? `We'll email them the redemption code on <b style="color:#2C2433">${scheduled}</b>.`
+    : `We've emailed them the redemption code.`;
   return shell(`
     <h1 style="font-size:20px;margin:0 0 6px;color:#2C2433">Your gift is on its way! 🎀</h1>
-    <p style="color:#9087A0;font-size:14px;margin:0 0 4px">You sent a Cinnamoroll Visa Platinum gift card (<b>${escape(dn)}</b>) to <b style="color:#2C2433">${to}</b>. We've emailed them the redemption code.</p>
+    <p style="color:#9087A0;font-size:14px;margin:0 0 4px">You sent a Cinnamoroll Visa Platinum gift card (<b>${escape(dn)}</b>) to <b style="color:#2C2433">${to}</b>. ${delivery}</p>
     <p style="color:#9087A0;font-size:14px;margin:0 0 4px">Amount paid: <b style="color:#2C2433">${amount}</b></p>
     ${cardImageTag(hasImage)}
     ${codeBox(d.code)}
@@ -175,7 +189,12 @@ function escape(s: string): string {
 }
 
 /** Send the gift email to the recipient and a confirmation to the sender/buyer. */
-export async function sendGiftEmails(d: GiftEmailData): Promise<EmailResult> {
+export async function sendGiftEmails(
+  d: GiftEmailData,
+  opts?: { recipient?: boolean; buyer?: boolean },
+): Promise<EmailResult> {
+  const sendRecipient = opts?.recipient ?? true;
+  const sendBuyer = opts?.buyer ?? true;
   const from = d.senderName || "Someone";
 
   // Resolve the card art (data URL): explicit override, else the product's image.
@@ -192,10 +211,10 @@ export async function sendGiftEmails(d: GiftEmailData): Promise<EmailResult> {
   const hasImage = Boolean(attachment);
 
   const tasks: Promise<"sent" | "skipped">[] = [];
-  if (d.recipientEmail) {
+  if (sendRecipient && d.recipientEmail) {
     tasks.push(sendOne(d.recipientEmail, `🎀 ${from} sent you a Cinnamoroll Visa gift card!`, recipientHtml(d, hasImage), attachments));
   }
-  if (d.buyerEmail) {
+  if (sendBuyer && d.buyerEmail) {
     const subject = d.recipientName
       ? `🎀 Your Cinnamoroll gift to ${d.recipientName} is on its way!`
       : "🎀 Your Cinnamoroll gift is on its way!";

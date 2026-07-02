@@ -279,7 +279,9 @@ export default function CinnamorollGiftFlow({
     message: "Hope this makes your day a little cuter! 🎀",
     collection: collections[0]?.id ?? "",
     design: collections[0]?.cards[0]?.id ?? "",
+    deliverDate: "", // YYYY-MM-DD (SGT); empty = deliver immediately
   });
+  const [scheduled, setScheduled] = useState(false);
   const [pay, setPay] = useState(paymentMethods.card ? "card" : "paynow");
   const [redeemInput, setRedeemInput] = useState("");
   const [redeemed, setRedeemed] = useState(false);
@@ -297,7 +299,14 @@ export default function CinnamorollGiftFlow({
   const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   const validEmail = emailRe.test(form.email);
   const validBuyer = emailRe.test(form.buyerEmail);
-  const detailsOk = form.recipient.trim() && validEmail && form.sender.trim() && validBuyer;
+  const scheduleOk = !scheduled || Boolean(form.deliverDate);
+  const detailsOk = form.recipient.trim() && validEmail && form.sender.trim() && validBuyer && scheduleOk;
+  const todaySG = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" }); // YYYY-MM-DD
+  const deliverAtISO = () =>
+    scheduled && form.deliverDate ? new Date(form.deliverDate + "T09:00:00+08:00").toISOString() : null;
+  const deliverLabel = form.deliverDate
+    ? new Date(form.deliverDate + "T09:00:00+08:00").toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Singapore" })
+    : "";
   const selectedCollection = collections.find((c) => c.id === form.collection) ?? collections[0];
   const cards = selectedCollection?.cards ?? [];
   const selected = cards.find((d) => d.id === form.design) ?? cards[0];
@@ -328,6 +337,7 @@ export default function CinnamorollGiftFlow({
     recipientEmail: form.email,
     sender: form.sender,
     message: form.message,
+    deliverAt: deliverAtISO(),
   });
 
   const handlePay = async () => {
@@ -552,6 +562,42 @@ export default function CinnamorollGiftFlow({
                   </div>
                 ))}
               </div>
+
+              <label className="sg-label">When to deliver</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  className={"sg-btn " + (!scheduled ? "sg-btn-primary" : "sg-btn-ghost")}
+                  style={{ flex: 1, padding: "10px 12px", fontSize: 13 }}
+                  onClick={() => { setScheduled(false); setForm((f) => ({ ...f, deliverDate: "" })); }}
+                >
+                  Send now
+                </button>
+                <button
+                  type="button"
+                  className={"sg-btn " + (scheduled ? "sg-btn-primary" : "sg-btn-ghost")}
+                  style={{ flex: 1, padding: "10px 12px", fontSize: 13 }}
+                  onClick={() => setScheduled(true)}
+                >
+                  📅 Schedule
+                </button>
+              </div>
+              {scheduled && (
+                <div style={{ marginTop: 10 }}>
+                  <input
+                    className="sg-input"
+                    type="date"
+                    min={todaySG}
+                    value={form.deliverDate}
+                    onChange={(e) => setForm((f) => ({ ...f, deliverDate: e.target.value }))}
+                  />
+                  <p className="sg-hint">
+                    {form.deliverDate
+                      ? `We'll email ${form.recipient || "your friend"} the code on ${deliverLabel} (SGT). You get your receipt right away.`
+                      : "Pick a date — the gift email is delivered that morning (SGT)."}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
@@ -573,6 +619,9 @@ export default function CinnamorollGiftFlow({
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{selected.name} · {selectedCollection.name}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginTop: 4 }}>To {form.recipient || "—"} · {form.email}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Receipt to {form.buyerEmail}</div>
+                  <div style={{ fontSize: 12, color: "var(--rose)", fontWeight: 700, marginTop: 4 }}>
+                    {deliverAtISO() ? `📅 Delivers ${deliverLabel}` : "📨 Delivers immediately"}
+                  </div>
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
@@ -605,7 +654,14 @@ export default function CinnamorollGiftFlow({
               <button className="sg-btn sg-btn-primary" style={{ flex: 1.6 }} disabled={paying || unavailable} onClick={handlePay}>{paying ? "Redirecting…" : pay === "card" ? `Pay ${priceLabel} with card →` : `Pay ${priceLabel}`}</button>
             </div>
             {payError && <p className="sg-hint" style={{ textAlign: "center", marginTop: 10, color: "var(--rose)" }}>{payError}</p>}
-            <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>🔒 Secured by Aleta Planet · Card payments use the sandbox gateway</p>
+            <p className="sg-hint" style={{ textAlign: "center", marginTop: 10 }}>🔒 Secured by Aleta Planet</p>
+            <p className="sg-hint" style={{ textAlign: "center", marginTop: 4 }}>
+              By paying you agree to our{" "}
+              <a href="/terms" target="_blank" rel="noopener" style={{ color: "var(--rose)", fontWeight: 700 }}>Terms</a>,{" "}
+              <a href="/refund" target="_blank" rel="noopener" style={{ color: "var(--rose)", fontWeight: 700 }}>Refund Policy</a>{" "}
+              &amp;{" "}
+              <a href="/privacy" target="_blank" rel="noopener" style={{ color: "var(--rose)", fontWeight: 700 }}>Privacy Policy</a>.
+            </p>
           </div>
         )}
 
@@ -634,6 +690,12 @@ export default function CinnamorollGiftFlow({
             <button className="sg-btn sg-btn-primary" style={{ marginTop: 10 }} onClick={() => setStep("product")}>Send another gift</button>
           </div>
         )}
+
+        <div style={{ textAlign: "center", marginTop: 22, fontSize: 12, color: "var(--muted)" }}>
+          <a href="/terms" target="_blank" rel="noopener" style={{ color: "var(--muted)", textDecoration: "none", margin: "0 7px", fontWeight: 600 }}>Terms</a>
+          <a href="/refund" target="_blank" rel="noopener" style={{ color: "var(--muted)", textDecoration: "none", margin: "0 7px", fontWeight: 600 }}>Refunds</a>
+          <a href="/privacy" target="_blank" rel="noopener" style={{ color: "var(--muted)", textDecoration: "none", margin: "0 7px", fontWeight: 600 }}>Privacy</a>
+        </div>
       </div>
 
       {/* ===== EMAIL OVERLAY ===== */}

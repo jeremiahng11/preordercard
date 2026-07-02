@@ -18,6 +18,7 @@ type StoredForm = {
   buyerEmail: string;
   message: string;
   design: string;
+  deliverDate?: string; // YYYY-MM-DD (SGT); empty = immediate
 };
 
 type Confirm = {
@@ -30,6 +31,7 @@ type Confirm = {
   recipientName: string | null;
   amount?: number;
   currency?: string;
+  deliverAt?: string | null;
   appStore?: string;
   playStore?: string;
 };
@@ -136,6 +138,9 @@ function ResultInner() {
                   buyerEmail: stored.buyerEmail,
                   message: stored.message,
                   design: stored.design,
+                  deliverAt: stored.deliverDate
+                    ? new Date(stored.deliverDate + "T09:00:00+08:00").toISOString()
+                    : null,
                 }
               : undefined,
           }),
@@ -166,6 +171,13 @@ function ResultInner() {
   const cardImage = data?.image ?? (CARD_IMG as Record<string, string>)[design] ?? (CARD_IMG as Record<string, string>).pinkcloud;
   const recipientName = data?.recipientName ?? form?.recipient ?? "";
   const code = data?.code ?? "";
+  const scheduledLabel = (() => {
+    const iso = data?.deliverAt;
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return null;
+    return d.toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Singapore" });
+  })();
 
   const copy = () => {
     if (!code) return;
@@ -225,8 +237,16 @@ function ResultInner() {
               </div>
               <h1 style={h1}>Payment successful! 🎉</h1>
               <p style={{ ...lead, marginTop: 8 }}>
-                We&apos;ve emailed <b style={{ color: "#2C2433" }}>{recipientName || "your friend"}</b> their{" "}
-                {cardName} card.
+                {scheduledLabel ? (
+                  <>
+                    We&apos;ll email <b style={{ color: "#2C2433" }}>{recipientName || "your friend"}</b> their {cardName} card on{" "}
+                    <b style={{ color: "#2C2433" }}>{scheduledLabel}</b>. Your receipt is on its way now.
+                  </>
+                ) : (
+                  <>
+                    We&apos;ve emailed <b style={{ color: "#2C2433" }}>{recipientName || "your friend"}</b> their {cardName} card.
+                  </>
+                )}
               </p>
               <div style={{ margin: "18px auto 0", maxWidth: 300 }}>
                 <img

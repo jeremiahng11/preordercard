@@ -34,4 +34,11 @@ export async function register() {
   } catch (e) {
     console.error("[seed] failed:", (e as Error).message);
   }
+
+  try {
+    const { startScheduler } = await import("@/lib/scheduled");
+    startScheduler();
+  } catch (e) {
+    console.error("[scheduler] failed to start:", (e as Error).message);
+  }
 }

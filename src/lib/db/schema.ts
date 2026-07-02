@@ -33,6 +33,12 @@ export const giftCards = pgTable(
     status: varchar("status", { length: 16 }).notNull().default("pending"),
     redeemedBy: varchar("redeemed_by", { length: 200 }),
 
+    // Scheduled delivery: when to email the recipient (null = immediately).
+    // recipientNotifiedAt is set once the recipient gift email has been sent,
+    // which also drives the scheduler (send when due, exactly once).
+    deliverAt: timestamp("deliver_at", { withTimezone: true }),
+    recipientNotifiedAt: timestamp("recipient_notified_at", { withTimezone: true }),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     redeemedAt: timestamp("redeemed_at", { withTimezone: true }),

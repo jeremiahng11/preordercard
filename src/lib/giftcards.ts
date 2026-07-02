@@ -25,6 +25,8 @@ export interface CreateActiveInput {
   buyerEmail?: string | null;
   message?: string | null;
   apTransId?: string | null;
+  deliverAt?: Date | null; // scheduled recipient delivery (null = immediate)
+  recipientNotifiedAt?: Date | null; // set when the recipient gift email was sent
 }
 
 /**
@@ -216,6 +218,34 @@ export async function markRefunded(id: string): Promise<GiftCard | null> {
     .where(eq(giftCards.id, id))
     .returning();
   return row ?? null;
+}
+
+/**
+ * Scheduled gifts whose delivery time has arrived but whose recipient hasn't been
+ * emailed yet. Drives the background scheduler. Only paid cards with a recipient
+ * address and a due (non-null, past) deliverAt are returned.
+ */
+export async function getDueScheduledCards(limit = 100): Promise<GiftCard[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(giftCards)
+    .where(
+      and(
+        sql`${giftCards.deliverAt} is not null`,
+        sql`${giftCards.deliverAt} <= now()`,
+        sql`${giftCards.recipientNotifiedAt} is null`,
+        sql`${giftCards.recipientEmail} is not null`,
+        inArray(giftCards.status, ["active", "redeemed"]),
+      ),
+    )
+    .limit(limit);
+}
+
+/** Mark the recipient gift email as sent (idempotent guard for the scheduler). */
+export async function markRecipientNotified(id: string): Promise<void> {
+  const db = getDb();
+  await db.update(giftCards).set({ recipientNotifiedAt: new Date() }).where(eq(giftCards.id, id));
 }
 
 export type RedeemReason = "NOT_FOUND" | "NOT_PAID" | "ALREADY_REDEEMED" | "NOT_REDEEMABLE";
