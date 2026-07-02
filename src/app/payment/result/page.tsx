@@ -76,6 +76,19 @@ const btnPrimary: React.CSSProperties = {
   textDecoration: "none",
 };
 const codeBox: React.CSSProperties = { background: "linear-gradient(135deg,#2C2433,#43344E)", borderRadius: 16, padding: 18, marginTop: 16 };
+const btnShare: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  border: 0,
+  borderRadius: 14,
+  padding: "13px 18px",
+  marginTop: 12,
+  fontWeight: 800,
+  fontSize: 15,
+  cursor: "pointer",
+  color: "#fff",
+  background: "linear-gradient(135deg,#25D366,#1EA952)",
+};
 
 function ResultInner() {
   const params = useSearchParams();
@@ -161,6 +174,24 @@ function ResultInner() {
     setTimeout(() => setCopied(false), 1600);
   };
 
+  const shareGift = async () => {
+    if (!code) return;
+    const text =
+      `🎀 ${recipientName ? recipientName + ", " : ""}I sent you a Cinnamoroll Visa Platinum gift card — ${cardName}!\n\n` +
+      `Your redemption code: ${code}\n\n` +
+      `Download the Aleta Adventure app, then enter the code to activate your card. 🎁`;
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: "Your Cinnamoroll gift card 🎀", text });
+        return;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return; // user dismissed the sheet
+        // otherwise fall through to the WhatsApp link
+      }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  };
+
   const success = data?.paid === true;
   const failed = !success && !loading && (resultCode === "FAIL" || resultCode === "CANCELLED" || data?.status === "failed");
   const pending = !success && !failed;
@@ -218,6 +249,9 @@ function ResultInner() {
                   {copied ? "✓ Copied" : "⧉ Copy code"}
                 </button>
               </div>
+              <button onClick={shareGift} style={btnShare}>
+                📤 Share the gift &amp; code
+              </button>
               <p style={{ ...lead, fontSize: 13, marginTop: 14 }}>
                 Download the Aleta Adventure app, then enter this code to activate the card.
               </p>
