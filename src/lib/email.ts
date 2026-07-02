@@ -97,29 +97,47 @@ export interface EmailResult {
   errors: string[];
 }
 
+const FONT = "'Segoe UI',system-ui,-apple-system,Arial,sans-serif";
+
+/**
+ * Table-based, fixed-width (480px) centered layout. Outlook's Word engine ignores
+ * max-width / margin:auto on <div>, so we center with a table + an MSO-conditional
+ * fixed-width table, and use bgcolor + background-color for solid fallbacks.
+ */
 function shell(inner: string): string {
-  return `<div style="font-family:'Segoe UI',system-ui,sans-serif;background:#FBF5F8;padding:24px">
-  <div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #EFE3EC;border-radius:20px;overflow:hidden">
-    <div style="background-color:#CC4E8E;background:linear-gradient(135deg,#E84E7E,#B79BF0);padding:18px 22px;color:#ffffff;font-weight:800;font-size:18px">Aleta Adventure</div>
-    <div style="padding:22px">${inner}</div>
-  </div>
-</div>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#FBF5F8">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FBF5F8">
+  <tr><td align="center" style="padding:24px;font-family:${FONT}">
+    <!--[if mso]><table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+    <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="width:480px;max-width:480px;background-color:#ffffff;border:1px solid #EFE3EC;border-radius:20px;overflow:hidden">
+      <tr><td bgcolor="#CC4E8E" style="background-color:#CC4E8E;background:linear-gradient(135deg,#E84E7E,#B79BF0);padding:18px 22px;color:#ffffff;font-weight:800;font-size:18px;font-family:${FONT}">Aleta Adventure</td></tr>
+      <tr><td style="padding:22px;color:#2C2433;font-family:${FONT}">${inner}</td></tr>
+    </table>
+    <!--[if mso]></td></tr></table><![endif]-->
+  </td></tr>
+</table>
+</body></html>`;
 }
 
 function codeBox(code: string): string {
-  // background-color is a solid fallback for Outlook (Word engine ignores CSS
-  // gradients — without it the box renders white and the white code vanishes).
-  return `<div style="background-color:#2C2433;background:linear-gradient(135deg,#2C2433,#43344E);border-radius:14px;padding:16px;text-align:center;margin:16px 0">
-    <div style="font-size:10px;letter-spacing:1.5px;color:#C9B8F4;text-transform:uppercase;font-weight:700;margin-bottom:6px">Redemption code</div>
-    <div style="font-family:'Courier New',monospace;font-size:22px;letter-spacing:3px;color:#ffffff;font-weight:700">${code}</div>
-  </div>`;
+  // bgcolor + background-color are solid fallbacks for Outlook (Word engine
+  // ignores CSS gradients — without them the box is white and the code vanishes).
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0">
+    <tr><td align="center" bgcolor="#2C2433" style="background-color:#2C2433;background:linear-gradient(135deg,#2C2433,#43344E);border-radius:14px;padding:16px">
+      <div style="font-size:10px;letter-spacing:1.5px;color:#C9B8F4;text-transform:uppercase;font-weight:700;margin-bottom:6px;font-family:${FONT}">Redemption code</div>
+      <div style="font-family:'Courier New',monospace;font-size:22px;letter-spacing:3px;color:#ffffff;font-weight:700">${code}</div>
+    </td></tr>
+  </table>`;
 }
 
 function storeButtons(): string {
   const { appStore, playStore } = storeLinks();
-  const btn = (href: string, label: string) =>
-    `<a href="${href}" style="display:inline-block;margin:4px;padding:10px 16px;background:#2C2433;color:#fff;border-radius:10px;text-decoration:none;font-size:13px;font-weight:700">${label}</a>`;
-  return `<div style="text-align:center;margin-top:14px">${btn(appStore, "📱 App Store")}${btn(playStore, "▶ Google Play")}</div>`;
+  const cell = (href: string, label: string) =>
+    `<td bgcolor="#2C2433" style="background-color:#2C2433;border-radius:10px"><a href="${href}" style="display:inline-block;padding:10px 16px;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;font-family:${FONT}">${label}</a></td>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:16px auto 0">
+    <tr>${cell(appStore, "📱 App Store")}<td style="width:10px">&nbsp;</td>${cell(playStore, "▶ Google Play")}</tr>
+  </table>`;
 }
 
 function recipientHtml(d: GiftEmailData, hasImage: boolean): string {
