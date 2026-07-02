@@ -1,0 +1,50 @@
+# Production stack for a single Docker host (e.g. one AWS EC2 instance).
+#
+#   web    – the Next.js app (this repo's Dockerfile), standalone server on :3000
+#   caddy  – reverse proxy that terminates TLS and auto-provisions a Let's Encrypt
+#            certificate for $DOMAIN (needs a real domain pointing at this host)
+#
+# The app is a SINGLE always-on instance — correct for the in-process scheduled
+# gift delivery (no risk of double-sending).
+#
+# Usage on the server:
+#   1) create .env  (see .env.example) and set DOMAIN + APP_BASE_URL
+#   2) docker compose -f docker-compose.prod.yml up -d --build
+#
+# No domain yet? Comment out the `caddy` service and add `ports: ["80:3000"]`
+# to `web` to serve plain HTTP on port 80 (not recommended for live payments).
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Prefer a prebuilt image? Comment out `build:` above and use:
+    # image: ${ECR_IMAGE:-giftacard:latest}
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

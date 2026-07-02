@@ -1,0 +1,7 @@
+# Caddy auto-provisions & renews a Let's Encrypt TLS cert for $DOMAIN and proxies
+# to the app. It forwards X-Forwarded-Proto/Host so the app builds correct return
+# URLs. DOMAIN is passed in from docker-compose (.env).
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
