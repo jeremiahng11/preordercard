@@ -1,8 +1,16 @@
+import nodemailer, { type Transporter } from "nodemailer";
 import { designName, formatAmount, storeLinks } from "@/lib/config";
 
 /**
- * Email delivery via Resend's HTTP API. If RESEND_API_KEY / EMAIL_FROM are not
- * set, emails are logged instead of sent — so the app works without email creds.
+ * Email delivery over SMTP (works with Brevo, SendGrid, Mailjet, Amazon SES, or
+ * any SMTP host). Configure via env:
+ *   SMTP_HOST   e.g. smtp-relay.brevo.com  /  smtp.sendgrid.net
+ *   SMTP_PORT   587 (STARTTLS, default) or 465 (implicit TLS)
+ *   SMTP_USER   provider SMTP login  (SendGrid: the literal "apikey")
+ *   SMTP_PASS   provider SMTP key / password
+ *   EMAIL_FROM  e.g.  Aleta Adventure <gifts@aletaadventure.com>
+ * If SMTP creds are not set, emails are logged instead of sent — so the app
+ * works without email creds.
  */
 
 export interface GiftEmailData {
@@ -23,27 +31,36 @@ function cardName(d: GiftEmailData): string {
 }
 
 function isConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return Boolean(
+    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.EMAIL_FROM,
+  );
+}
+
+let transporter: Transporter | null = null;
+function getTransport(): Transporter {
+  if (transporter) return transporter;
+  const port = Number(process.env.SMTP_PORT) || 587;
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465, // 465 = implicit TLS; 587 upgrades via STARTTLS
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+  return transporter;
 }
 
 async function sendOne(to: string, subject: string, html: string): Promise<"sent" | "skipped"> {
   if (!isConfigured()) {
-    console.log(`[email:skipped] to=${to} subject=${subject} (set RESEND_API_KEY + EMAIL_FROM to send)`);
+    console.log(`[email:skipped] to=${to} subject=${subject} (set SMTP_HOST/USER/PASS + EMAIL_FROM to send)`);
     return "skipped";
   }
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [to], subject, html }),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Resend ${res.status}: ${body.slice(0, 300)}`);
+  try {
+    await getTransport().sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+    return "sent";
+  } catch (e) {
+    const msg = (e as Error).message || String(e);
+    throw new Error(`SMTP send failed: ${msg.slice(0, 300)}`);
   }
-  return "sent";
 }
 
 export interface EmailResult {

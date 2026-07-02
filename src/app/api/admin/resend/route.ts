@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (result.sent === 0) {
       return NextResponse.json({
         ok: true,
-        warning: "Email is not configured (RESEND_API_KEY / EMAIL_FROM) — nothing was sent, only logged.",
+        warning: "Email is not configured (SMTP_HOST / SMTP_USER / SMTP_PASS / EMAIL_FROM) — nothing was sent, only logged.",
       });
     }
     await audit(me.username, "email_resent", card.code, `sent=${result.sent}`);
