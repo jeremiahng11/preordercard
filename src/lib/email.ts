@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { designName, formatAmount, storeLinks } from "@/lib/config";
+import { getProductBySlug } from "@/lib/products";
 
 /**
  * Email delivery over SMTP (works with Brevo, SendGrid, Mailjet, Amazon SES, or
@@ -24,6 +25,28 @@ export interface GiftEmailData {
   senderName: string | null;
   buyerEmail: string | null;
   message: string | null;
+  /** Front-art data URL. If omitted, it's looked up from the product by designId. */
+  image?: string | null;
+}
+
+type Attachment = { filename: string; content: Buffer; contentType: string; cid: string };
+
+/** Turn a base64 data URL into an inline (CID) attachment, or null if not one. */
+function dataUrlToAttachment(dataUrl: string | null | undefined, cid: string): Attachment | null {
+  if (!dataUrl) return null;
+  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s.exec(dataUrl);
+  if (!m) return null;
+  const contentType = m[1];
+  const ext = contentType.split("/")[1].split("+")[0].replace("jpeg", "jpg");
+  return { filename: `card.${ext}`, content: Buffer.from(m[2], "base64"), contentType, cid };
+}
+
+const CARD_CID = "cardfront";
+
+/** <img> referencing the inline card attachment; empty when there's no image. */
+function cardImageTag(present: boolean): string {
+  if (!present) return "";
+  return `<img src="cid:${CARD_CID}" alt="Your gift card" width="436" style="width:100%;max-width:436px;height:auto;border-radius:14px;display:block;margin:14px auto 0" />`;
 }
 
 function cardName(d: GiftEmailData): string {
@@ -49,13 +72,18 @@ function getTransport(): Transporter {
   return transporter;
 }
 
-async function sendOne(to: string, subject: string, html: string): Promise<"sent" | "skipped"> {
+async function sendOne(
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: Attachment[],
+): Promise<"sent" | "skipped"> {
   if (!isConfigured()) {
     console.log(`[email:skipped] to=${to} subject=${subject} (set SMTP_HOST/USER/PASS + EMAIL_FROM to send)`);
     return "skipped";
   }
   try {
-    await getTransport().sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+    await getTransport().sendMail({ from: process.env.EMAIL_FROM, to, subject, html, attachments });
     return "sent";
   } catch (e) {
     const msg = (e as Error).message || String(e);
@@ -92,13 +120,14 @@ function storeButtons(): string {
   return `<div style="text-align:center;margin-top:14px">${btn(appStore, "📱 App Store")}${btn(playStore, "▶ Google Play")}</div>`;
 }
 
-function recipientHtml(d: GiftEmailData): string {
+function recipientHtml(d: GiftEmailData, hasImage: boolean): string {
   const name = d.recipientName || "there";
   const from = d.senderName || "A friend";
   const dn = cardName(d);
   return shell(`
     <h1 style="font-size:20px;margin:0 0 6px;color:#2C2433">You've got a gift, ${escape(name)}! 🎁</h1>
     <p style="color:#9087A0;font-size:14px;margin:0 0 4px"><b style="color:#2C2433">${escape(from)}</b> sent you a collectible Cinnamoroll Visa Platinum gift card — <b>${escape(dn)}</b>.</p>
+    ${cardImageTag(hasImage)}
     ${d.message ? `<p style="font-style:italic;color:#6b6075;font-size:14px;margin:10px 0">"${escape(d.message)}"</p>` : ""}
     ${codeBox(d.code)}
     <p style="color:#9087A0;font-size:13px;margin:0">Download the Aleta Adventure app, then enter this code to activate your card.</p>
@@ -106,7 +135,7 @@ function recipientHtml(d: GiftEmailData): string {
   `);
 }
 
-function buyerHtml(d: GiftEmailData): string {
+function buyerHtml(d: GiftEmailData, hasImage: boolean): string {
   const dn = cardName(d);
   const amount = formatAmount(d.amountMinor, d.currency);
   const to = d.recipientName ? escape(d.recipientName) : "your friend";
@@ -114,6 +143,7 @@ function buyerHtml(d: GiftEmailData): string {
     <h1 style="font-size:20px;margin:0 0 6px;color:#2C2433">Your gift is on its way! 🎀</h1>
     <p style="color:#9087A0;font-size:14px;margin:0 0 4px">You sent a Cinnamoroll Visa Platinum gift card (<b>${escape(dn)}</b>) to <b style="color:#2C2433">${to}</b>. We've emailed them the redemption code.</p>
     <p style="color:#9087A0;font-size:14px;margin:0 0 4px">Amount paid: <b style="color:#2C2433">${amount}</b></p>
+    ${cardImageTag(hasImage)}
     ${codeBox(d.code)}
     <p style="color:#9087A0;font-size:13px;margin:0 0 2px">Here's the code too, in case they need a hand. Keep this email for your records.</p>
     ${storeButtons()}
@@ -127,15 +157,29 @@ function escape(s: string): string {
 /** Send the gift email to the recipient and a confirmation to the sender/buyer. */
 export async function sendGiftEmails(d: GiftEmailData): Promise<EmailResult> {
   const from = d.senderName || "Someone";
+
+  // Resolve the card art (data URL): explicit override, else the product's image.
+  let imageDataUrl = d.image ?? null;
+  if (!imageDataUrl) {
+    try {
+      imageDataUrl = (await getProductBySlug(d.designId))?.image ?? null;
+    } catch {
+      /* image is best-effort; never block the email on a lookup failure */
+    }
+  }
+  const attachment = dataUrlToAttachment(imageDataUrl, CARD_CID);
+  const attachments = attachment ? [attachment] : undefined;
+  const hasImage = Boolean(attachment);
+
   const tasks: Promise<"sent" | "skipped">[] = [];
   if (d.recipientEmail) {
-    tasks.push(sendOne(d.recipientEmail, `🎀 ${from} sent you a Cinnamoroll Visa gift card!`, recipientHtml(d)));
+    tasks.push(sendOne(d.recipientEmail, `🎀 ${from} sent you a Cinnamoroll Visa gift card!`, recipientHtml(d, hasImage), attachments));
   }
   if (d.buyerEmail) {
     const subject = d.recipientName
       ? `🎀 Your Cinnamoroll gift to ${d.recipientName} is on its way!`
       : "🎀 Your Cinnamoroll gift is on its way!";
-    tasks.push(sendOne(d.buyerEmail, subject, buyerHtml(d)));
+    tasks.push(sendOne(d.buyerEmail, subject, buyerHtml(d, hasImage), attachments));
   }
   const results = await Promise.allSettled(tasks);
   const out: EmailResult = { sent: 0, skipped: 0, errors: [] };
