@@ -33,7 +33,18 @@ export default async function AdminDashboard() {
     );
   }
 
-  const interests = await listInterests(200);
+  let interests: Awaited<ReturnType<typeof listInterests>> = [];
+  try {
+    interests = await listInterests(200);
+  } catch (err) {
+    return (
+      <Shell role={me.role}>
+        <p style={{ color: "#ff9fc0" }}>
+          Could not load customer interests: {(err as Error).message}. If this is a fresh deploy, ensure database migrations have run.
+        </p>
+      </Shell>
+    );
+  }
   const total = interests.length;
   const promoApplied = interests.filter((item) => item.promoCode).length;
   const productCounts = interests.reduce<Record<string, number>>((acc, item) => {

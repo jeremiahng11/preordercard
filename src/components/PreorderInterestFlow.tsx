@@ -210,19 +210,6 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                 </div>
 
                 <div className="sg-panel" style={{ marginTop: 16 }}>
-                  <div className="sg-row" style={{ gap: 12, flexWrap: "wrap" }}>
-                    <div>
-                      <div className="sg-label">Price</div>
-                      <div className="sg-price">{priceLabel}</div>
-                    </div>
-                    {comingSoon ? (
-                      <div className="sg-badge" style={{ background: "#EEE9FF", color: "#6B39E8" }}>Available {comingSoonLabel || "soon"}</div>
-                    ) : null}
-                  </div>
-                  <p className="sg-note">Product code: <strong>{selected.id}</strong></p>
-                </div>
-
-                <div className="sg-panel" style={{ marginTop: 16 }}>
                   <label className="sg-label">Choose a design</label>
                   <div className="sg-swatches">
                     {cards.map((d) => (
@@ -276,6 +263,19 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                       I agree to allow Aleta Planet to contact me for the Early Bird Signup.
                     </span>
                   </label>
+                </div>
+
+                <div className="sg-panel" style={{ marginTop: 16 }}>
+                  <div className="sg-row" style={{ gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div className="sg-label">Price</div>
+                      <div className="sg-price">{priceLabel}</div>
+                    </div>
+                    {comingSoon ? (
+                      <div className="sg-badge" style={{ background: "#EEE9FF", color: "#6B39E8" }}>Available {comingSoonLabel || "soon"}</div>
+                    ) : null}
+                  </div>
+                  <p className="sg-note">Product code: <strong>{selected.id}</strong></p>
                 </div>
 
                 <div style={{ marginTop: 14 }}>
