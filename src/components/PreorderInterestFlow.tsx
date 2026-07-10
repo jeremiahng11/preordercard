@@ -372,7 +372,7 @@ export default function PreorderInterestFlow({
                 <div style={{ marginTop: 16 }}>
                   <div className="sg-eyebrow">Early access application</div>
                   <h1 className="sg-h1">Apply for early access to {selected.name}</h1>
-                  <p className="sg-lead">This early bird is a reservation, not a charge. Submit your details to reserve {selected.name} at your early-bird price — we’ll email you when it’s available on 24 July.</p>
+                  <p className="sg-lead">This is an early-bird access, not a charge. Submit your details to reserve our Cinnamoroll {selected.name} at your early-bird price — we’ll email you when it’s available on 24 July.</p>
                 </div>
 
                 <div className="sg-panel" style={{ marginTop: 16 }}>
