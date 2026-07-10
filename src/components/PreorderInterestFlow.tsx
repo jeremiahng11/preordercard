@@ -2,6 +2,9 @@
 
 import { useEffect, useState, type ChangeEvent } from "react";
 import { ADV_LOGO } from "@/lib/assets";
+import { AppStoreBadge, GooglePlayBadge } from "@/components/StoreBadges";
+
+export type StoreLinks = { appStore: string; playStore: string };
 
 export type StoreProduct = {
   id: string;
@@ -78,7 +81,13 @@ const STYLES = `
 .sg-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700;}
 `;
 
-export default function PreorderInterestFlow({ collections }: { collections: StoreCollection[] }) {
+export default function PreorderInterestFlow({
+  collections,
+  storeLinks,
+}: {
+  collections: StoreCollection[];
+  storeLinks: StoreLinks;
+}) {
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -94,6 +103,27 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
   const [promoValidity, setPromoValidity] = useState<{ valid: boolean; message: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
   const [agreed, setAgreed] = useState(true);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+
+  const shareApp = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : storeLinks.appStore;
+    const shareData = {
+      title: "Aleta Adventure — Early bird reservation",
+      text: "Reserve your Cinnamoroll collectible card and get the Aleta Adventure app!",
+      url,
+    };
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share(shareData);
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        setShareNote("Link copied to clipboard!");
+        setTimeout(() => setShareNote(null), 2500);
+      }
+    } catch {
+      /* user dismissed the share sheet — ignore */
+    }
+  };
 
   const setField = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
   const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -187,6 +217,22 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
     }
   };
 
+  const appPromo = (
+    <div className="sg-panel" style={{ marginTop: 16 }}>
+      <p className="sg-note" style={{ marginTop: 0 }}>
+        📲 Get ready for <strong>24 July</strong> — download the Aleta Adventure app so you’re set to use your code when the preorder opens.
+      </p>
+      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+        <AppStoreBadge href={storeLinks.appStore} />
+        <GooglePlayBadge href={storeLinks.playStore} />
+      </div>
+      <button type="button" className="sg-btn sg-btn-ghost" style={{ marginTop: 12 }} onClick={shareApp}>
+        🔗 Share
+      </button>
+      {shareNote && <p className="sg-hint" style={{ color: "#2F855A", marginTop: 8 }}>{shareNote}</p>}
+    </div>
+  );
+
   return (
     <div className="sg-root">
       <style>{STYLES}</style>
@@ -209,7 +255,7 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                 <div style={{ marginTop: 16 }}>
                   <div className="sg-eyebrow">Early access application</div>
                   <h1 className="sg-h1">Apply for early access to {selected.name}</h1>
-                  <p className="sg-lead">Submit your details below and apply to reserve your preferred design. We’ll contact you once the card is available from the 24th.</p>
+                  <p className="sg-lead">This early bird is a reservation, not a charge. Submit your details to reserve {selected.name} at your early-bird price — we’ll email you when it’s available on 24 July.</p>
                 </div>
 
                 <div className="sg-panel" style={{ marginTop: 16 }}>
@@ -289,6 +335,8 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   <p className="sg-note">Product code: <strong>{selected.id}</strong></p>
                 </div>
 
+                {appPromo}
+
                 <div style={{ marginTop: 14 }}>
                   <button
                     type="button"
@@ -308,8 +356,8 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
               <div className="sg-fadein">
                 <div className="sg-panel" style={{ textAlign: "center" }}>
                   <div style={{ width: 64, height: 64, borderRadius: 99, background: "linear-gradient(135deg,#9FE3C3,#6FD9A8)", display: "grid", placeItems: "center", margin: "0 auto 14px", color: "#fff", fontSize: 30, boxShadow: "0 10px 24px -8px rgba(111,217,168,.7)" }}>✓</div>
-                  <h1 className="sg-h1" style={{ fontSize: 22 }}>Interest registered!</h1>
-                  <p className="sg-lead" style={{ marginTop: 10 }}>We’ll email you when the {selected.name} card is available from the 24th.</p>
+                  <h1 className="sg-h1" style={{ fontSize: 22 }}>Reservation confirmed!</h1>
+                  <p className="sg-lead" style={{ marginTop: 10 }}>This early bird is a reservation — we’ve saved your {selected.name} at your early-bird price. We’ll email you when it’s available on 24 July.</p>
                   <p className="sg-note" style={{ marginTop: 10 }}>Product code: <strong>{selected.id}</strong></p>
                   {promoDiscount ? (
                     <>
@@ -320,7 +368,12 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   ) : (
                     <p className="sg-note">Price shown: <strong>{priceLabel}</strong></p>
                   )}
+                  {form.promoCode.trim() && (
+                    <p className="sg-note">Use your promo code <strong>{form.promoCode.trim().toUpperCase()}</strong> on 24 July when the preorder opens.</p>
+                  )}
                 </div>
+
+                {appPromo}
 
                 <button className="sg-btn sg-btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={() => setSubmitted(false)}>
                   Back to Register

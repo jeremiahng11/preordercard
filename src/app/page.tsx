@@ -2,6 +2,7 @@ import PreorderInterestFlow, { type StoreCollection } from "@/components/Preorde
 import { isDbConfigured } from "@/lib/db";
 import { listActiveCollections } from "@/lib/collections";
 import { listStorefrontProducts } from "@/lib/products";
+import { storeLinks } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,5 +46,5 @@ export default async function Home() {
     }
   }
 
-  return <PreorderInterestFlow collections={collections} />;
+  return <PreorderInterestFlow collections={collections} storeLinks={storeLinks()} />;
 }

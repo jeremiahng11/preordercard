@@ -293,15 +293,22 @@ function interestHtml(data: InterestEmailData): string {
   const promoNote = data.promoCode
     ? `<p style="margin:0 0 16px;color:#2C2433;font-size:14px">We’ve locked in your promo code <strong>${escape(data.promoCode)}</strong>${
         data.promoDiscountPercent ? ` — a ${data.promoDiscountPercent}% early-bird discount` : ""
-      } for this order.</p>`
-    : `<p style="margin:0 0 16px;color:#9087A0;font-size:14px">No promo code was entered for this order.</p>`;
+      } for this reservation.</p>`
+    : `<p style="margin:0 0 16px;color:#9087A0;font-size:14px">No promo code was entered for this reservation.</p>`;
+
+  const codeInstruction = data.promoCode
+    ? `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 Use your code <strong>${escape(data.promoCode)}</strong> on <strong>24 July</strong> when the preorder opens to claim your early-bird price.</p>`
+    : `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 Come back on <strong>24 July</strong> when the preorder opens to place your order at your early-bird price.</p>`;
 
   return shell(`
-    <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird order is reserved, ${escape(data.fullName)}! 🎉</h1>
-    <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for registering your interest in <strong>${escape(data.productName)}</strong>. Here’s a summary of your early-bird order.</p>
+    <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird reservation is confirmed, ${escape(data.fullName)}! 🎉</h1>
+    <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for reserving <strong>${escape(data.productName)}</strong>. This is a reservation — you won’t be charged yet. Here’s a summary of your early-bird reservation.</p>
     ${promoNote}
     ${orderSummary(data)}
-    <p style="margin:16px 0 0;color:#9087A0;font-size:13px;line-height:1.5">We’ll email you again the moment the preorder opens and your selected design is available. Your promo code will already be applied.</p>
+    ${codeInstruction}
+    <p style="margin:20px 0 8px;color:#2C2433;font-size:14px;line-height:1.6">📲 Download the <strong>Aleta Adventure</strong> app so you’re ready on 24 July:</p>
+    ${storeButtons()}
+    <p style="margin:20px 0 0;color:#9087A0;font-size:13px;line-height:1.5">We’ll email you again the moment the preorder opens and your selected design is available.</p>
     <p style="margin:24px 0 0;color:#2C2433;font-size:14px;font-weight:700">Thanks for your interest,<br/>The Aleta Adventure team</p>
   `);
 }
@@ -309,8 +316,8 @@ function interestHtml(data: InterestEmailData): string {
 export async function sendInterestConfirmationEmail(data: InterestEmailData): Promise<EmailResult> {
   const html = interestHtml(data);
   const subject = data.promoCode
-    ? `Your early-bird order for ${data.productName} (promo ${data.promoCode})`
-    : `Your early-bird order for ${data.productName}`;
+    ? `Your early-bird reservation for ${data.productName} (promo ${data.promoCode})`
+    : `Your early-bird reservation for ${data.productName}`;
   const result = await sendOne(data.email, subject, html);
   return { sent: result === "sent" ? 1 : 0, skipped: result === "skipped" ? 1 : 0, errors: [] };
 }
