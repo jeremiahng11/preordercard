@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
@@ -115,8 +116,6 @@ function PageLink({ href, disabled, label }: { href: string; disabled: boolean; 
     </Link>
   );
 }
-
-const cardBox: React.CSSProperties = { background: "#181b22", border: "1px solid #262b36", borderRadius: 12, padding: "14px 16px" };
 
 function Shell({ children, nav = true, role = "user" }: { children: React.ReactNode; nav?: boolean; role?: string }) {
   return (
