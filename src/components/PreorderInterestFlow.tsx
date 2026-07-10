@@ -191,7 +191,7 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
 
         {selected ? (
           <>
-            {step === "product" && (
+            {!submitted && (
               <div className="sg-fadein">
                 <div style={{ position: "relative", borderRadius: 22, overflow: "hidden", boxShadow: "0 22px 50px -18px rgba(120,80,140,.5)" }}>
                   <img src={selected.img} alt={selected.name} style={{ width: "100%", display: "block" }} />
@@ -234,14 +234,17 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   <p className="sg-note">Product code: <strong>{selected.id}</strong></p>
                 </div>
 
-                <button className="sg-btn sg-btn-primary" disabled={unavailable} onClick={() => setStep("details")}>
-                  Register my interest →
-                </button>
+<div style={{ marginTop: 14 }}>
+                  <button type="button" className="sg-btn sg-btn-primary" onClick={handleSubmit} disabled={!detailsOk || submitting || unavailable} style={{ width: "100%" }}>
+                    {submitting ? "Submitting…" : "Submit interest"}
+                  </button>
+                </div>
+                {submitError && <p className="sg-hint" style={{ color: "var(--rose)", marginTop: 12 }}>{submitError}</p>}
                 {unavailable && <p className="sg-hint" style={{ marginTop: 12 }}>This design is not accepting preorder interest right now.</p>}
               </div>
             )}
 
-            {step === "details" && (
+            {!submitted && (
               <div className="sg-fadein">
                 <div className="sg-panel">
                   <div className="sg-eyebrow">Your details</div>
@@ -264,11 +267,8 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   <p className="sg-hint">Use a promo code if you have one; e.g. IMKOMEI15. We’ll validate it when you submit.</p>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-                  <button type="button" className="sg-btn sg-btn-ghost" onClick={() => setStep("product")} style={{ flex: 1 }}>
-                    Back
-                  </button>
-                  <button type="button" className="sg-btn sg-btn-primary" onClick={handleSubmit} disabled={!detailsOk || submitting} style={{ flex: 1 }}>
+                <div style={{ marginTop: 14 }}>
+                  <button type="button" className="sg-btn sg-btn-primary" onClick={handleSubmit} disabled={!detailsOk || submitting || unavailable} style={{ width: "100%" }}>
                     {submitting ? "Submitting…" : "Submit interest"}
                   </button>
                 </div>
@@ -276,7 +276,7 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
               </div>
             )}
 
-            {step === "success" && submitted && (
+            {submitted && (
               <div className="sg-fadein">
                 <div className="sg-panel" style={{ textAlign: "center" }}>
                   <div style={{ width: 64, height: 64, borderRadius: 99, background: "linear-gradient(135deg,#9FE3C3,#6FD9A8)", display: "grid", placeItems: "center", margin: "0 auto 14px", color: "#fff", fontSize: 30, boxShadow: "0 10px 24px -8px rgba(111,217,168,.7)" }}>✓</div>
@@ -287,7 +287,7 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   {promoDiscount ? <p className="sg-note">Promo discount applied: <strong>{promoDiscount}%</strong></p> : null}
                 </div>
 
-                <button className="sg-btn sg-btn-primary" style={{ marginTop: 14 }} onClick={() => setStep("product")}>
+                <button className="sg-btn sg-btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={() => setSubmitted(false)}>
                   Review another design
                 </button>
               </div>
