@@ -44,7 +44,7 @@ function fmtPrice(minor: number, currency: string): string {
   return sym + (minor / 100).toFixed(2);
 }
 
-const STYLES = `
+export const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 
 .sg-root *{box-sizing:border-box;margin:0;padding:0;}

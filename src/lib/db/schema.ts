@@ -115,6 +115,44 @@ export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type ProductStatus = "active" | "soldout" | "delisted";
 
+export const promoCodes = pgTable(
+  "promo_codes",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 120 }).notNull(),
+    code: varchar("code", { length: 32 }).notNull(),
+    discountPercent: integer("discount_percent").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ promoCodeUq: uniqueIndex("promo_codes_code_uq").on(t.code) }),
+);
+
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type NewPromoCode = typeof promoCodes.$inferInsert;
+
+export const customerInterests = pgTable(
+  "customer_interests",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    fullName: varchar("full_name", { length: 200 }).notNull(),
+    email: varchar("email", { length: 200 }).notNull(),
+    mobile: varchar("mobile", { length: 40 }).notNull(),
+    productName: varchar("product_name", { length: 120 }).notNull(),
+    productCode: varchar("product_code", { length: 48 }).notNull(),
+    priceMinor: integer("price_minor").notNull(),
+    currency: varchar("currency", { length: 3 }).notNull().default("SGD"),
+    promoCode: varchar("promo_code", { length: 32 }),
+    promoDiscountPercent: integer("promo_discount_percent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export type CustomerInterest = typeof customerInterests.$inferSelect;
+export type NewCustomerInterest = typeof customerInterests.$inferInsert;
+
 /** Admin users who can log into the dashboard. */
 export const adminUsers = pgTable(
   "admin_users",
