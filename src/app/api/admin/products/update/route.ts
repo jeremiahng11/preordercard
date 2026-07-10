@@ -57,6 +57,15 @@ export async function POST(req: NextRequest) {
     }
     patch.image = body.image;
   }
+  if (body.backImage !== undefined) {
+    if (body.backImage === null) {
+      patch.backImage = null; // clear the custom back, fall back to the default
+    } else if (typeof body.backImage === "string" && body.backImage.startsWith("data:image/") && body.backImage.length <= MAX_IMAGE_BYTES) {
+      patch.backImage = body.backImage;
+    } else {
+      return NextResponse.json({ error: "Back image must be a data URL ≤3MB" }, { status: 400 });
+    }
+  }
   if (typeof body.back === "string" && body.back.trim()) patch.back = body.back.trim();
   if (body.collectionId !== undefined) {
     patch.collectionId = typeof body.collectionId === "string" && body.collectionId ? body.collectionId : null;
