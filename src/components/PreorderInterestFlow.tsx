@@ -110,6 +110,9 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
   const comingSoonLabel = fmtComingSoon(comingSoonRawDate);
   const unavailable = selected?.status === "delisted";
   const priceLabel = selected ? fmtPrice(selected.priceMinor, selected.currency) : "";
+  const activeDiscount = promoValidity?.valid && promoDiscount ? promoDiscount : 0;
+  const discountedMinor = selected ? Math.round(selected.priceMinor * (1 - activeDiscount / 100)) : 0;
+  const discountedLabel = selected ? fmtPrice(discountedMinor, selected.currency) : "";
 
   const pickCollection = (c: StoreCollection) => setForm({ ...form, collection: c.id, design: c.cards[0]?.id ?? "" });
 
@@ -269,7 +272,15 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   <div className="sg-row" style={{ gap: 12, flexWrap: "wrap" }}>
                     <div>
                       <div className="sg-label">Price</div>
-                      <div className="sg-price">{priceLabel}</div>
+                      {activeDiscount > 0 ? (
+                        <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                          <div className="sg-price">{discountedLabel}</div>
+                          <div style={{ fontSize: 15, color: "#9087A0", textDecoration: "line-through" }}>{priceLabel}</div>
+                          <div className="sg-badge" style={{ background: "#E7F7EE", color: "#2F855A" }}>{activeDiscount}% off</div>
+                        </div>
+                      ) : (
+                        <div className="sg-price">{priceLabel}</div>
+                      )}
                     </div>
                     {comingSoon ? (
                       <div className="sg-badge" style={{ background: "#EEE9FF", color: "#6B39E8" }}>Available {comingSoonLabel || "soon"}</div>
@@ -300,8 +311,15 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   <h1 className="sg-h1" style={{ fontSize: 22 }}>Interest registered!</h1>
                   <p className="sg-lead" style={{ marginTop: 10 }}>We’ll email you when the {selected.name} card is available from the 24th.</p>
                   <p className="sg-note" style={{ marginTop: 10 }}>Product code: <strong>{selected.id}</strong></p>
-                  <p className="sg-note">Price shown: <strong>{priceLabel}</strong></p>
-                  {promoDiscount ? <p className="sg-note">Promo discount applied: <strong>{promoDiscount}%</strong></p> : null}
+                  {promoDiscount ? (
+                    <>
+                      <p className="sg-note">Original price: <strong style={{ textDecoration: "line-through" }}>{priceLabel}</strong></p>
+                      <p className="sg-note">Promo discount applied: <strong>{promoDiscount}% off</strong></p>
+                      <p className="sg-note">You pay: <strong>{fmtPrice(Math.round(selected.priceMinor * (1 - promoDiscount / 100)), selected.currency)}</strong></p>
+                    </>
+                  ) : (
+                    <p className="sg-note">Price shown: <strong>{priceLabel}</strong></p>
+                  )}
                 </div>
 
                 <button className="sg-btn sg-btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={() => setSubmitted(false)}>
