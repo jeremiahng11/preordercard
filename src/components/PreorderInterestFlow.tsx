@@ -44,6 +44,94 @@ function fmtPrice(minor: number, currency: string): string {
   return sym + (minor / 100).toFixed(2);
 }
 
+/** Animated collectible card: floats, has a moving shine, and flips on tap. */
+function GiftCard({
+  product,
+  recipient,
+  float,
+  interactive,
+  comingSoon,
+  comingSoonDate,
+}: {
+  product: StoreProduct;
+  recipient?: string;
+  float?: boolean;
+  interactive?: boolean;
+  comingSoon?: boolean;
+  comingSoonDate?: string | null;
+}) {
+  const [flipped, setFlipped] = useState(false);
+  const name = (recipient || "").trim().toUpperCase() || "YOUR NAME";
+  const isSoon = comingSoon ?? product.comingSoon;
+  const soonDate = fmtComingSoon(comingSoonDate ?? product.comingSoonDate);
+
+  const comingSoonBanner = isSoon ? (
+    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none", zIndex: 3 }}>
+      <div
+        style={{
+          width: "170%",
+          transform: "rotate(-9deg)",
+          background: "rgba(44,36,51,.84)",
+          color: "#fff",
+          textAlign: "center",
+          padding: "9px 0",
+          boxShadow: "0 10px 24px rgba(0,0,0,.35)",
+          backdropFilter: "blur(1px)",
+        }}
+      >
+        <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 19, letterSpacing: 2.5 }}>COMING SOON</div>
+        {soonDate && <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, opacity: 0.92, marginTop: 1 }}>{soonDate}</div>}
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <div className={"sg-floatwrap" + (float ? " float" : "")}>
+      <div
+        className={"sg-flip" + (flipped ? " flipped" : "")}
+        onClick={() => interactive && setFlipped((f) => !f)}
+        style={{ cursor: interactive ? "pointer" : "default" }}
+      >
+        {/* FRONT */}
+        <div className="sg-face">
+          <img src={product.img} alt={product.name} />
+          <div className="sg-shine" />
+          {interactive && <div className="sg-fliphint">↻ Tap to flip</div>}
+          {comingSoonBanner}
+        </div>
+        {/* BACK */}
+        <div className="sg-face sg-face-back" style={{ background: product.back }}>
+          <div className="sg-shine" />
+          {product.backImage ? (
+            <img src={product.backImage} alt={"Back of " + product.name} />
+          ) : (
+            <div className="sg-back-pad">
+              <div className="sg-back-top">
+                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                  <img src={ADV_LOGO} alt="Aleta Adventure" style={{ height: 14 }} />
+                  <span style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 8.5, color: "#6B39E8", lineHeight: 1, whiteSpace: "nowrap" }}>Aleta Adventure</span>
+                </div>
+                <div className="sg-le">Limited Edition</div>
+              </div>
+              <div className="sg-stripe" />
+              <div>
+                <div className="sg-back-num">•••• •••• •••• 2026</div>
+                <div className="sg-back-foot">
+                  <div>
+                    <div className="sg-back-tiny">Cardholder</div>
+                    <div className="sg-back-name">{name}</div>
+                  </div>
+                  <div className="sg-visa">VISA<small>Platinum</small></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 
@@ -79,6 +167,30 @@ const STYLES = `
 .sg-hint{font-size:11px;color:var(--muted);margin-top:5px;font-weight:500;}
 .sg-note{font-size:13px;color:var(--ink);line-height:1.6;margin-top:10px;}
 .sg-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700;}
+
+/* ---- animated flip card ---- */
+.sg-floatwrap{perspective:1300px;}
+.sg-floatwrap.float{animation:sgfloat 6s ease-in-out infinite;}
+@keyframes sgfloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+.sg-flip{position:relative;width:100%;aspect-ratio:1.586/1;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.85,.25,1);cursor:pointer;}
+.sg-flip.flipped{transform:rotateY(180deg);}
+.sg-face{position:absolute;inset:0;border-radius:22px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 22px 50px -18px rgba(120,80,140,.5);}
+.sg-face img{width:100%;height:100%;object-fit:cover;display:block;}
+.sg-face-back{transform:rotateY(180deg);}
+.sg-shine{position:absolute;inset:0;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.5) 48%,transparent 60%);transform:translateX(-120%);animation:sgshine 5.5s ease-in-out infinite;mix-blend-mode:screen;pointer-events:none;}
+@keyframes sgshine{0%,60%{transform:translateX(-120%);}85%,100%{transform:translateX(120%);}}
+.sg-fliphint{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.82);backdrop-filter:blur(3px);color:#3a2a3c;font-size:10px;font-weight:800;letter-spacing:.4px;padding:5px 9px;border-radius:99px;display:flex;gap:5px;align-items:center;pointer-events:none;}
+.sg-back-pad{position:absolute;inset:0;padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between;color:#3a2a3c;}
+.sg-back-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.sg-le{font-size:9px;font-weight:800;letter-spacing:1.1px;background:rgba(255,255,255,.72);padding:4px 9px;border-radius:99px;text-transform:uppercase;}
+.sg-stripe{height:34px;background:#2c2433;opacity:.82;border-radius:3px;margin:0 -20px;}
+.sg-back-num{font-family:'JetBrains Mono';font-weight:500;font-size:14px;letter-spacing:2px;opacity:.92;margin-top:10px;}
+.sg-back-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px;}
+.sg-back-tiny{font-size:8px;opacity:.7;letter-spacing:1px;text-transform:uppercase;}
+.sg-back-name{font-family:'Baloo 2';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.6px;}
+.sg-visa{font-style:italic;font-weight:800;font-size:17px;letter-spacing:-.5px;color:#1A1F71;}
+.sg-visa small{font-style:normal;font-weight:600;font-size:8px;letter-spacing:.5px;display:block;text-align:right;margin-top:-2px;color:#1A1F71;}
+@media (prefers-reduced-motion: reduce){.sg-floatwrap.float{animation:none;}.sg-shine{animation:none;display:none;}}
 `;
 
 export default function PreorderInterestFlow({
@@ -249,9 +361,14 @@ export default function PreorderInterestFlow({
           <>
             {!submitted && (
               <div className="sg-fadein">
-                <div style={{ position: "relative", borderRadius: 22, overflow: "hidden", boxShadow: "0 22px 50px -18px rgba(120,80,140,.5)" }}>
-                  <img src={selected.img} alt={selected.name} style={{ width: "100%", display: "block" }} />
-                </div>
+                <GiftCard
+                  product={selected}
+                  recipient={form.fullName}
+                  comingSoon={comingSoon}
+                  comingSoonDate={comingSoonRawDate}
+                  float
+                  interactive
+                />
                 <div style={{ marginTop: 16 }}>
                   <div className="sg-eyebrow">Early access application</div>
                   <h1 className="sg-h1">Apply for early access to {selected.name}</h1>
