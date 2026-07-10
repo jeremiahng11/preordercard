@@ -242,6 +242,8 @@ export interface InterestEmailData {
   currency?: string | null;
   promoCode?: string | null;
   promoDiscountPercent?: number | null;
+  /** Front-art data URL. If omitted, it's looked up from the product by productCode. */
+  image?: string | null;
 }
 
 /** A labelled row for the order-summary table. */
@@ -289,7 +291,7 @@ function orderSummary(data: InterestEmailData): string {
   </table>`;
 }
 
-function interestHtml(data: InterestEmailData): string {
+function interestHtml(data: InterestEmailData, hasImage: boolean): string {
   const promoNote = data.promoCode
     ? `<p style="margin:0 0 16px;color:#2C2433;font-size:14px">We’ve locked in your promo code <strong>${escape(data.promoCode)}</strong>${
         data.promoDiscountPercent ? ` — a ${data.promoDiscountPercent}% early-bird discount` : ""
@@ -303,6 +305,7 @@ function interestHtml(data: InterestEmailData): string {
   return shell(`
     <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird reservation is confirmed, ${escape(data.fullName)}! 🎉</h1>
     <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for reserving <strong>${escape(data.productName)}</strong>. This is a reservation — you won’t be charged yet. Here’s a summary of your early-bird reservation.</p>
+    ${cardImageTag(hasImage)}
     ${promoNote}
     ${orderSummary(data)}
     ${codeInstruction}
@@ -314,10 +317,22 @@ function interestHtml(data: InterestEmailData): string {
 }
 
 export async function sendInterestConfirmationEmail(data: InterestEmailData): Promise<EmailResult> {
-  const html = interestHtml(data);
+  // Resolve the selected design's artwork (data URL) and inline it as a CID attachment.
+  let imageDataUrl = data.image ?? null;
+  if (!imageDataUrl) {
+    try {
+      imageDataUrl = (await getProductBySlug(data.productCode))?.image ?? null;
+    } catch {
+      /* image is best-effort; never block the email on a lookup failure */
+    }
+  }
+  const attachment = dataUrlToAttachment(imageDataUrl, CARD_CID);
+  const attachments = attachment ? [attachment] : undefined;
+
+  const html = interestHtml(data, Boolean(attachment));
   const subject = data.promoCode
     ? `Your early-bird reservation for ${data.productName} (promo ${data.promoCode})`
     : `Your early-bird reservation for ${data.productName}`;
-  const result = await sendOne(data.email, subject, html);
+  const result = await sendOne(data.email, subject, html, attachments);
   return { sent: result === "sent" ? 1 : 0, skipped: result === "skipped" ? 1 : 0, errors: [] };
 }

@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     currency: product.currency,
     promoCode: promoUsed,
     promoDiscountPercent,
+    image: product.image,
   })
     .then((result) => {
       if (result.sent > 0) return markInterestEmailed(interest.id);
