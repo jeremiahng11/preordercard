@@ -162,9 +162,9 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   <img src={selected.img} alt={selected.name} style={{ width: "100%", display: "block" }} />
                 </div>
                 <div style={{ marginTop: 16 }}>
-                  <div className="sg-eyebrow">Preorder interest</div>
-                  <h1 className="sg-h1">Express interest for {selected.name}</h1>
-                  <p className="sg-lead">Tell us your details and the design you want. We'll notify you when the card is available on the 24th.</p>
+                  <div className="sg-eyebrow">Early access application</div>
+                  <h1 className="sg-h1">Apply for early access to {selected.name}</h1>
+                  <p className="sg-lead">Submit your details below and apply to reserve your preferred design. We’ll contact you once the card is available from the 24th.</p>
                 </div>
 
                 <div className="sg-panel" style={{ marginTop: 16 }}>
@@ -211,8 +211,9 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                 <div className="sg-panel">
                   <div className="sg-eyebrow">Your details</div>
                   <h1 className="sg-h1" style={{ fontSize: 22 }}>Request updates for {selected.name}</h1>
+                  <p className="sg-note" style={{ marginTop: 10 }}>Mandatory fields: Name, Email address, Mobile</p>
 
-                  <label className="sg-label">Full name</label>
+                  <label className="sg-label">Name</label>
                   <input className="sg-input" value={form.fullName} onChange={setField("fullName")} placeholder="e.g. Jeremiah" />
 
                   <label className="sg-label">Email address</label>
@@ -224,8 +225,8 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                   {form.mobile && !validMobile && <p className="sg-hint" style={{ color: "var(--rose)" }}>Enter a valid mobile number.</p>}
 
                   <label className="sg-label">Promo code (optional)</label>
-                  <input className="sg-input" value={form.promoCode} onChange={setField("promoCode")} placeholder="e.g. PREORDER24" />
-                  <p className="sg-hint">Use a promo code if you have one; we’ll validate it when you submit.</p>
+                  <input className="sg-input" value={form.promoCode} onChange={setField("promoCode")} placeholder="e.g. IMKOMEI15" />
+                  <p className="sg-hint">Use a promo code if you have one; e.g. IMKOMEI15. We’ll validate it when you submit.</p>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
