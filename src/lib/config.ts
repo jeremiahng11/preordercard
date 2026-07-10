@@ -35,7 +35,7 @@ export function storeLinks() {
       process.env.APP_STORE_URL || "https://apps.apple.com/sg/app/aleta-adventure/id6761358158",
     playStore:
       process.env.PLAY_STORE_URL ||
-      "https://play.google.com/store/apps/details?id=com.aletaplanet.adventure",
+      "https://play.google.com/store/apps/details?id=com.aleta.adventure&hl=en_SG",
   };
 }
 
