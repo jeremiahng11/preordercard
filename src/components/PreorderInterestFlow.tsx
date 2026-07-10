@@ -323,7 +323,7 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                 </div>
 
                 <button className="sg-btn sg-btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={() => setSubmitted(false)}>
-                  Review another design
+                  Back to Register
                 </button>
               </div>
             )}
