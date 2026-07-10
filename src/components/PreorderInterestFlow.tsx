@@ -317,7 +317,7 @@ export default function PreorderInterestFlow({
                 <div className="sg-panel" style={{ marginTop: 16 }}>
                   <div className="sg-row" style={{ gap: 12, flexWrap: "wrap" }}>
                     <div>
-                      <div className="sg-label">Your 24th July Price will be:</div>
+                      <div className="sg-label">Your 24th July Early Bird Price will be:</div>
                       {activeDiscount > 0 ? (
                         <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
                           <div className="sg-price">{discountedLabel}</div>
