@@ -12,6 +12,7 @@ export interface CustomerInterestInput {
   currency: string;
   promoCode?: string | null;
   promoDiscountPercent?: number | null;
+  lang?: string;
 }
 
 export async function createInterest(input: CustomerInterestInput): Promise<CustomerInterest> {
@@ -28,6 +29,7 @@ export async function createInterest(input: CustomerInterestInput): Promise<Cust
       currency: input.currency,
       promoCode: input.promoCode ?? null,
       promoDiscountPercent: input.promoDiscountPercent ?? null,
+      lang: input.lang === "zh" ? "zh" : "en",
     })
     .returning();
   return row;

@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
         ? body.productCode.trim()
         : "";
   const promoCode = typeof body.promoCode === "string" ? body.promoCode.trim().toUpperCase() : "";
+  const lang = body.lang === "zh" ? "zh" : "en";
 
   if (!fullName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
   if (!EMAIL_RE.test(email)) return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
     currency: product.currency,
     promoCode: promoUsed,
     promoDiscountPercent,
+    lang,
   });
 
   void audit(fullName, "interest_registered", productCode, promoUsed ?? "none");
@@ -82,6 +84,7 @@ export async function POST(req: NextRequest) {
     promoCode: promoUsed,
     promoDiscountPercent,
     image: product.image,
+    lang,
   })
     .then((result) => {
       if (result.sent > 0) return markInterestEmailed(interest.id);

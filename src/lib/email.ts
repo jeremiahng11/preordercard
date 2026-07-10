@@ -244,7 +244,40 @@ export interface InterestEmailData {
   promoDiscountPercent?: number | null;
   /** Front-art data URL. If omitted, it's looked up from the product by productCode. */
   image?: string | null;
+  /** "en" (default) or "zh" — sends the confirmation in that language. */
+  lang?: string | null;
 }
+
+type InterestLabels = {
+  design: string;
+  productCode: string;
+  price: string;
+  promo: (code: string, pct: number) => string;
+  earlyBirdTotal: string;
+  earlyBirdPrice: string;
+  promoCode: string;
+};
+
+const INTEREST_LABELS: Record<"en" | "zh", InterestLabels> = {
+  en: {
+    design: "Design",
+    productCode: "Product code",
+    price: "Price",
+    promo: (code, pct) => `Promo ${code} (−${pct}%)`,
+    earlyBirdTotal: "Early-bird total",
+    earlyBirdPrice: "Early-bird price",
+    promoCode: "Promo code",
+  },
+  zh: {
+    design: "设计",
+    productCode: "产品编号",
+    price: "价格",
+    promo: (code, pct) => `优惠 ${code}（−${pct}%）`,
+    earlyBirdTotal: "早鸟总价",
+    earlyBirdPrice: "早鸟价",
+    promoCode: "优惠码",
+  },
+};
 
 /** A labelled row for the order-summary table. */
 function summaryRow(label: string, value: string, opts?: { strong?: boolean; strike?: boolean }): string {
@@ -263,7 +296,8 @@ function summaryRow(label: string, value: string, opts?: { strong?: boolean; str
   </tr>`;
 }
 
-function orderSummary(data: InterestEmailData): string {
+function orderSummary(data: InterestEmailData, lang: "en" | "zh"): string {
+  const L = INTEREST_LABELS[lang];
   const currency = data.currency || "SGD";
   const hasPrice = typeof data.priceMinor === "number" && data.priceMinor > 0;
   const base = hasPrice ? data.priceMinor! : 0;
@@ -271,19 +305,19 @@ function orderSummary(data: InterestEmailData): string {
   const discounted = discountPct ? Math.round(base * (1 - discountPct / 100)) : base;
 
   const rows = [
-    summaryRow("Design", escape(data.productName), { strong: true }),
-    summaryRow("Product code", escape(data.productCode)),
+    summaryRow(L.design, escape(data.productName), { strong: true }),
+    summaryRow(L.productCode, escape(data.productCode)),
   ];
   if (hasPrice) {
     if (discountPct) {
-      rows.push(summaryRow("Price", formatAmount(base, currency), { strike: true }));
-      rows.push(summaryRow(`Promo ${escape(data.promoCode!)} (−${discountPct}%)`, `−${formatAmount(base - discounted, currency)}`));
-      rows.push(summaryRow("Early-bird total", formatAmount(discounted, currency), { strong: true }));
+      rows.push(summaryRow(L.price, formatAmount(base, currency), { strike: true }));
+      rows.push(summaryRow(L.promo(escape(data.promoCode!), discountPct), `−${formatAmount(base - discounted, currency)}`));
+      rows.push(summaryRow(L.earlyBirdTotal, formatAmount(discounted, currency), { strong: true }));
     } else {
-      rows.push(summaryRow("Early-bird price", formatAmount(base, currency), { strong: true }));
+      rows.push(summaryRow(L.earlyBirdPrice, formatAmount(base, currency), { strong: true }));
     }
   } else if (data.promoCode) {
-    rows.push(summaryRow("Promo code", `${escape(data.promoCode)}${discountPct ? ` (−${discountPct}%)` : ""}`, { strong: true }));
+    rows.push(summaryRow(L.promoCode, `${escape(data.promoCode)}${discountPct ? ` (−${discountPct}%)` : ""}`, { strong: true }));
   }
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;border-top:1px solid #EFE3EC;border-bottom:1px solid #EFE3EC">
@@ -291,7 +325,7 @@ function orderSummary(data: InterestEmailData): string {
   </table>`;
 }
 
-function interestHtml(data: InterestEmailData, hasImage: boolean): string {
+function interestHtmlEn(data: InterestEmailData, hasImage: boolean): string {
   const promoNote = data.promoCode
     ? `<p style="margin:0 0 16px;color:#2C2433;font-size:14px">We’ve locked in your promo code <strong>${escape(data.promoCode)}</strong>${
         data.promoDiscountPercent ? ` — a ${data.promoDiscountPercent}% early-bird discount` : ""
@@ -307,12 +341,37 @@ function interestHtml(data: InterestEmailData, hasImage: boolean): string {
     <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for registering our <strong>Collectible Cinnamoroll ${escape(data.productName)} Visa Debit Card</strong>. This is a reservation — you won’t be charged yet. Here’s a summary of your early-bird reservation.</p>
     ${cardImageTag(hasImage)}
     ${promoNote}
-    ${orderSummary(data)}
+    ${orderSummary(data, "en")}
     ${codeInstruction}
     <p style="margin:20px 0 8px;color:#2C2433;font-size:14px;line-height:1.6">📲 Download the <strong>Aleta Adventure</strong> app so you’re ready on 24 July:</p>
     ${storeButtons()}
     <p style="margin:20px 0 0;color:#9087A0;font-size:13px;line-height:1.5">We’ll Contact you again the moment application is opened and your selected design is available on the 24th July.</p>
     <p style="margin:24px 0 0;color:#2C2433;font-size:14px;font-weight:700">Thanks for your interest,<br/>The Aleta Adventure team</p>
+  `);
+}
+
+function interestHtmlZh(data: InterestEmailData, hasImage: boolean): string {
+  const promoNote = data.promoCode
+    ? `<p style="margin:0 0 16px;color:#2C2433;font-size:14px">我们已为此预约锁定您的优惠码 <strong>${escape(data.promoCode)}</strong>${
+        data.promoDiscountPercent ? `——${data.promoDiscountPercent}% 早鸟折扣` : ""
+      }。</p>`
+    : `<p style="margin:0 0 16px;color:#9087A0;font-size:14px">此预约未输入优惠码。</p>`;
+
+  const codeInstruction = data.promoCode
+    ? `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 请于 <strong>7月24日</strong> 预购开放时使用优惠码 <strong>${escape(data.promoCode)}</strong>，即可享受早鸟价。</p>`
+    : `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 请于 <strong>7月24日</strong> 订单开放时回来，享受您的早鸟专属权益。</p>`;
+
+  return shell(`
+    <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">您的早鸟预约已确认。</h1>
+    <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">感谢您登记我们的<strong>玉桂狗 ${escape(data.productName)} 收藏版 Visa 借记卡</strong>。这是预约，暂不会扣款。以下是您的早鸟预约摘要。</p>
+    ${cardImageTag(hasImage)}
+    ${promoNote}
+    ${orderSummary(data, "zh")}
+    ${codeInstruction}
+    <p style="margin:20px 0 8px;color:#2C2433;font-size:14px;line-height:1.6">📲 下载 <strong>Aleta Adventure</strong> 应用，做好7月24日的准备：</p>
+    ${storeButtons()}
+    <p style="margin:20px 0 0;color:#9087A0;font-size:13px;line-height:1.5">一旦申请开放且您所选设计上架（7月24日），我们会再次与您联系。</p>
+    <p style="margin:24px 0 0;color:#2C2433;font-size:14px;font-weight:700">感谢您的关注，<br/>Aleta Adventure 团队</p>
   `);
 }
 
@@ -329,10 +388,16 @@ export async function sendInterestConfirmationEmail(data: InterestEmailData): Pr
   const attachment = dataUrlToAttachment(imageDataUrl, CARD_CID);
   const attachments = attachment ? [attachment] : undefined;
 
-  const html = interestHtml(data, Boolean(attachment));
-  const subject = data.promoCode
-    ? `Your early-bird reservation for ${data.productName} (promo ${data.promoCode})`
-    : `Your early-bird reservation for ${data.productName}`;
+  const lang = data.lang === "zh" ? "zh" : "en";
+  const html = lang === "zh" ? interestHtmlZh(data, Boolean(attachment)) : interestHtmlEn(data, Boolean(attachment));
+  const subject =
+    lang === "zh"
+      ? data.promoCode
+        ? `您的早鸟预约：${data.productName}（优惠码 ${data.promoCode}）`
+        : `您的早鸟预约：${data.productName}`
+      : data.promoCode
+        ? `Your early-bird reservation for ${data.productName} (promo ${data.promoCode})`
+        : `Your early-bird reservation for ${data.productName}`;
   const result = await sendOne(data.email, subject, html, attachments);
   return { sent: result === "sent" ? 1 : 0, skipped: result === "skipped" ? 1 : 0, errors: [] };
 }

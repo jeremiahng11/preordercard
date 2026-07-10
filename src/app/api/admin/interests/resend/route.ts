@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     currency: interest.currency,
     promoCode: interest.promoCode,
     promoDiscountPercent: interest.promoDiscountPercent,
+    lang: interest.lang,
   });
 
   if (result.errors.length) {
