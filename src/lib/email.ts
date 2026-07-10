@@ -300,7 +300,7 @@ function interestHtml(data: InterestEmailData, hasImage: boolean): string {
 
   const codeInstruction = data.promoCode
     ? `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 Use your code <strong>${escape(data.promoCode)}</strong> on <strong>24 July</strong> when the preorder opens to claim your early-bird price.</p>`
-    : `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 Come back on <strong>24 July</strong> when the preorder opens to place your order at your early-bird price.</p>`;
+    : `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 Come back on <strong>24 July</strong> when the order is open for your early-bird access.</p>`;
 
   return shell(`
     <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird access is confirmed.</h1>
