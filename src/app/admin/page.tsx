@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
-import { listInterests } from "@/lib/customer-interest";
+import { listInterests, countUndownloadedInterests } from "@/lib/customer-interest";
 import AdminNav from "@/components/AdminNav";
 import AdminInterests from "@/components/AdminInterests";
 
@@ -34,8 +34,10 @@ export default async function AdminDashboard() {
   }
 
   let interests: Awaited<ReturnType<typeof listInterests>> = [];
+  let undownloadedCount = 0;
   try {
     interests = await listInterests(200);
+    undownloadedCount = await countUndownloadedInterests();
   } catch (err) {
     return (
       <Shell role={me.role}>
@@ -102,7 +104,7 @@ export default async function AdminDashboard() {
         <div style={{ fontSize: 12, color: "#7c8595", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.6 }}>
           Latest registrations
         </div>
-        <AdminInterests interests={recentInterests} canWrite={canWrite} canDelete={canDelete} />
+        <AdminInterests interests={recentInterests} canWrite={canWrite} canDelete={canDelete} undownloadedCount={undownloadedCount} />
         {total > recentInterests.length && (
           <p style={{ marginTop: 14, color: "#9aa3b2", fontSize: 13 }}>
             Showing the latest {recentInterests.length} of {total} interest records.

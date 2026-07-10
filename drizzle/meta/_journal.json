@@ -92,6 +92,13 @@
       "when": 1783700000000,
       "tag": "0012_interest_status",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783800000000,
+      "tag": "0013_interest_downloaded",
+      "breakpoints": true
     }
   ]
 }

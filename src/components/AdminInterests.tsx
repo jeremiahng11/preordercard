@@ -40,15 +40,56 @@ export default function AdminInterests({
   interests,
   canWrite = true,
   canDelete = false,
+  undownloadedCount = 0,
 }: {
   interests: InterestView[];
   canWrite?: boolean;
   canDelete?: boolean;
+  undownloadedCount?: number;
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<"new" | "all" | null>(null);
+
+  async function downloadCsv(scope: "new" | "all") {
+    setExporting(scope);
+    setError(null);
+    setNote(null);
+    try {
+      const res = await fetch("/api/admin/interests/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Export failed");
+      }
+      const count = Number(res.headers.get("X-Row-Count") || "0");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      a.href = url;
+      a.download = `registrations-${scope}-${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      if (scope === "new") {
+        setNote(count > 0 ? `Exported ${count} new registration${count === 1 ? "" : "s"} and marked as downloaded.` : "No new registrations to download.");
+        router.refresh();
+      } else {
+        setNote(`Exported ${count} registration${count === 1 ? "" : "s"}.`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setExporting(null);
+    }
+  }
 
   async function act(id: string, action: "resend" | "revoke" | "delete") {
     if (action === "revoke" && !confirm("Revoke this registration? It will be flagged as cancelled.")) return;
@@ -83,6 +124,19 @@ export default function AdminInterests({
       {note && (
         <div style={{ background: "#16361f", color: "#7ee2a0", padding: "10px 14px", borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {note}
+        </div>
+      )}
+      {canWrite && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+          <button onClick={() => downloadCsv("new")} disabled={exporting !== null} style={{ ...btn("#6b39e8", "#fff"), marginLeft: 0 }}>
+            {exporting === "new" ? "Exporting…" : `Download new${undownloadedCount ? ` (${undownloadedCount})` : ""} as CSV`}
+          </button>
+          <button onClick={() => downloadCsv("all")} disabled={exporting !== null} style={{ ...btn("#2d333f"), marginLeft: 0 }}>
+            {exporting === "all" ? "Exporting…" : "Download all as CSV"}
+          </button>
+          <span style={{ fontSize: 12, color: "#7c8595" }}>
+            “Download new” exports only registrations not yet downloaded, then marks them so they won’t repeat.
+          </span>
         </div>
       )}
       {interests.length === 0 ? (

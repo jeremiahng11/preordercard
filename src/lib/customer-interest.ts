@@ -1,4 +1,4 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { customerInterests, type CustomerInterest } from "@/lib/db/schema";
 
@@ -36,6 +36,34 @@ export async function createInterest(input: CustomerInterestInput): Promise<Cust
 export async function listInterests(limit = 200): Promise<CustomerInterest[]> {
   const db = getDb();
   return db.select().from(customerInterests).orderBy(desc(customerInterests.createdAt)).limit(limit);
+}
+
+/** Count registrations not yet included in a CSV download. */
+export async function countUndownloadedInterests(): Promise<number> {
+  const db = getDb();
+  const rows = await db.select({ id: customerInterests.id }).from(customerInterests).where(isNull(customerInterests.downloadedAt));
+  return rows.length;
+}
+
+/**
+ * Atomically claim all not-yet-downloaded registrations: stamp downloaded_at
+ * and return exactly the rows that were marked, so a later export won't repeat
+ * them. Ordered oldest-first for a stable CSV.
+ */
+export async function takeUndownloadedInterests(): Promise<CustomerInterest[]> {
+  const db = getDb();
+  const rows = await db
+    .update(customerInterests)
+    .set({ downloadedAt: sql`now()` })
+    .where(isNull(customerInterests.downloadedAt))
+    .returning();
+  return rows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+}
+
+/** All registrations, oldest-first — for a full ("download everything") export. */
+export async function listAllInterests(): Promise<CustomerInterest[]> {
+  const db = getDb();
+  return db.select().from(customerInterests).orderBy(customerInterests.createdAt);
 }
 
 export async function getInterestById(id: string): Promise<CustomerInterest | null> {

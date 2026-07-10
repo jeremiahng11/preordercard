@@ -311,7 +311,7 @@ function interestHtml(data: InterestEmailData, hasImage: boolean): string {
     ${codeInstruction}
     <p style="margin:20px 0 8px;color:#2C2433;font-size:14px;line-height:1.6">📲 Download the <strong>Aleta Adventure</strong> app so you’re ready on 24 July:</p>
     ${storeButtons()}
-    <p style="margin:20px 0 0;color:#9087A0;font-size:13px;line-height:1.5">We’ll email you again the moment the preorder opens and your selected design is available.</p>
+    <p style="margin:20px 0 0;color:#9087A0;font-size:13px;line-height:1.5">We’ll Contact you again the moment application is opened and your selected design is available on the 24th July.</p>
     <p style="margin:24px 0 0;color:#2C2433;font-size:14px;font-weight:700">Thanks for your interest,<br/>The Aleta Adventure team</p>
   `);
 }
