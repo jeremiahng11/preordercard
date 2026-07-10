@@ -13,6 +13,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:reset": "drizzle-kit migrate reset && drizzle-kit migrate",
     "deploy:railway": "sh ./scripts/deploy-railway.sh",
+    "git:auto": "sh ./scripts/git-auto.sh",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

@@ -154,6 +154,16 @@ npm run deploy:railway
 
 This pushes `main` to the `preordercard` remote and triggers `railway up --detach`.
 
+### Auto commit and push
+
+Run this helper to stage all changes, commit with a generated message, and push to the configured remote:
+
+```bash
+npm run git:auto
+```
+
+By default it uses the `preordercard` remote and `main` branch. Override with `GIT_REMOTE` or `GIT_BRANCH` if needed.
+
 Run the production image locally with Docker:
 
 ```bash
