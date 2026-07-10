@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { ADV_LOGO } from "@/lib/assets";
 
 export type StoreProduct = {
@@ -79,7 +79,6 @@ const STYLES = `
 `;
 
 export default function PreorderInterestFlow({ collections }: { collections: StoreCollection[] }) {
-  const [step, setStep] = useState<"product" | "details" | "success">("product");
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -92,6 +91,8 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [promoDiscount, setPromoDiscount] = useState<number | null>(null);
+  const [promoValidity, setPromoValidity] = useState<{ valid: boolean; message: string } | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
 
   const setField = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
   const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -110,6 +111,41 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
   const priceLabel = selected ? fmtPrice(selected.priceMinor, selected.currency) : "";
 
   const pickCollection = (c: StoreCollection) => setForm({ ...form, collection: c.id, design: c.cards[0]?.id ?? "" });
+
+  useEffect(() => {
+    if (!form.promoCode.trim()) {
+      setPromoValidity(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(async () => {
+      setPromoChecking(true);
+      setPromoValidity(null);
+      try {
+        const res = await fetch(`/api/promo/validate?code=${encodeURIComponent(form.promoCode.trim())}`);
+        const data = await res.json();
+        if (!res.ok) {
+          if (!cancelled) {
+            setPromoValidity({ valid: false, message: data.error || "Promo code is invalid" });
+          }
+        } else if (!cancelled) {
+          setPromoValidity({ valid: true, message: `Promo applied: ${data.discountPercent}% off` });
+          setPromoDiscount(data.discountPercent ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setPromoValidity({ valid: false, message: "Could not validate promo code" });
+        }
+      } finally {
+        if (!cancelled) setPromoChecking(false);
+      }
+    }, 450);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [form.promoCode]);
 
   const handleSubmit = async () => {
     if (!selected) return;
@@ -134,7 +170,6 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
       }
       setPromoDiscount(typeof data.promoDiscountPercent === "number" ? data.promoDiscountPercent : null);
       setSubmitted(true);
-      setStep("success");
     } catch (err) {
       setSubmitError((err as Error).message);
     } finally {

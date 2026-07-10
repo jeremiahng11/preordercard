@@ -31,7 +31,7 @@ export default function AdminInterests({ interests }: { interests: InterestView[
             <th style={th}>Product</th>
             <th style={th}>Code</th>
             <th style={th}>Price</th>
-            <th style={th}>Promo</th>
+            <th style={th}>Promo Code</th>
             <th style={th}>Created</th>
           </tr>
         </thead>

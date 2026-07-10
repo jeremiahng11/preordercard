@@ -3,6 +3,8 @@ import { isDbConfigured } from "@/lib/db";
 import { createInterest } from "@/lib/customer-interest";
 import { getProductBySlug } from "@/lib/products";
 import { getPromoCodeByCode, isPromoCodeActive } from "@/lib/promocodes";
+import { audit } from "@/lib/audit";
+import { sendInterestConfirmationEmail } from "@/lib/email";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PHONE_RE = /^[0-9+()\-\s]{6,40}$/;
@@ -60,6 +62,19 @@ export async function POST(req: NextRequest) {
     currency: product.currency,
     promoCode: promoUsed,
     promoDiscountPercent,
+  });
+
+  void audit(fullName, "interest_registered", productCode, promoUsed ?? "none");
+
+  void sendInterestConfirmationEmail({
+    fullName,
+    email,
+    productName,
+    productCode,
+    promoCode: promoUsed,
+    promoDiscountPercent,
+  }).catch((error) => {
+    console.error("Failed to send interest confirmation email:", error);
   });
 
   return NextResponse.json({ ok: true, id: interest.id, promoDiscountPercent });
