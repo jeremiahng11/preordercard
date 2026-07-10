@@ -51,6 +51,7 @@ export async function seedDefaults(): Promise<void> {
         CARDS.map((c, i) => ({
           collectionId: coll!.id,
           slug: c.slug,
+          code: c.slug,
           name: c.name,
           priceMinor: 1800,
           currency: "SGD",

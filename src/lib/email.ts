@@ -1,6 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { designName, formatAmount, storeLinks } from "@/lib/config";
-import { getProductBySlug } from "@/lib/products";
+import { getProductBySlug, getProductByCode } from "@/lib/products";
 
 /**
  * Email delivery over SMTP (works with Brevo, SendGrid, Mailjet, Amazon SES, or
@@ -321,7 +321,7 @@ export async function sendInterestConfirmationEmail(data: InterestEmailData): Pr
   let imageDataUrl = data.image ?? null;
   if (!imageDataUrl) {
     try {
-      imageDataUrl = (await getProductBySlug(data.productCode))?.image ?? null;
+      imageDataUrl = (await getProductByCode(data.productCode))?.image ?? null;
     } catch {
       /* image is best-effort; never block the email on a lookup failure */
     }

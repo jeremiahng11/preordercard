@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
 
   const patch: {
     name?: string;
+    code?: string;
     priceMinor?: number;
     image?: string;
     backImage?: string | null;
@@ -43,6 +44,13 @@ export async function POST(req: NextRequest) {
     const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
     if (!name) return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
     patch.name = name;
+  }
+  if (body.code !== undefined) {
+    const code = typeof body.code === "string" ? body.code.trim().slice(0, 48) : "";
+    if (!/^[\w -]{2,48}$/.test(code)) {
+      return NextResponse.json({ error: "Product code may use letters, numbers, spaces, - and _ (2–48 chars)" }, { status: 400 });
+    }
+    patch.code = code;
   }
   if (body.priceMinor !== undefined) {
     const price = Number(body.priceMinor);
@@ -82,7 +90,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const updated = await updateProduct(id, patch);
+  let updated;
+  try {
+    updated = await updateProduct(id, patch);
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.includes("already in use")) return NextResponse.json({ error: msg }, { status: 409 });
+    throw e;
+  }
   if (!updated) return NextResponse.json({ error: "Product not found" }, { status: 404 });
   await audit(me.username, "product_updated", updated.name);
   return NextResponse.json({ ok: true });

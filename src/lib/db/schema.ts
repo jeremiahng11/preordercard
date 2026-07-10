@@ -92,6 +92,7 @@ export const products = pgTable(
     id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
     collectionId: varchar("collection_id", { length: 36 }),
     slug: varchar("slug", { length: 48 }).notNull(),
+    code: varchar("code", { length: 48 }).notNull(),
     name: varchar("name", { length: 120 }).notNull(),
     priceMinor: integer("price_minor").notNull(),
     currency: varchar("currency", { length: 3 }).notNull().default("SGD"),
@@ -108,6 +109,7 @@ export const products = pgTable(
   },
   (t) => ({
     slugUq: uniqueIndex("products_slug_uq").on(t.slug),
+    codeUq: uniqueIndex("products_code_uq").on(t.code),
   }),
 );
 

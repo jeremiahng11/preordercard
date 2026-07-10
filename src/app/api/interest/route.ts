@@ -26,20 +26,26 @@ export async function POST(req: NextRequest) {
   const fullName = typeof body.fullName === "string" ? body.fullName.trim().slice(0, 200) : "";
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const mobile = typeof body.mobile === "string" ? body.mobile.trim() : "";
-  const productCode = typeof body.productCode === "string" ? body.productCode.trim() : "";
-  const productName = typeof body.productName === "string" ? body.productName.trim() : "";
+  const productSlug =
+    typeof body.productSlug === "string"
+      ? body.productSlug.trim()
+      : typeof body.productCode === "string"
+        ? body.productCode.trim()
+        : "";
   const promoCode = typeof body.promoCode === "string" ? body.promoCode.trim().toUpperCase() : "";
 
   if (!fullName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
   if (!EMAIL_RE.test(email)) return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
   if (!PHONE_RE.test(mobile)) return NextResponse.json({ error: "Valid mobile number is required" }, { status: 400 });
-  if (!productName) return NextResponse.json({ error: "Product name is required" }, { status: 400 });
-  if (!productCode) return NextResponse.json({ error: "Product code is required" }, { status: 400 });
+  if (!productSlug) return NextResponse.json({ error: "Please select a design" }, { status: 400 });
 
-  const product = await getProductBySlug(productCode);
+  const product = await getProductBySlug(productSlug);
   if (!product) {
-    return NextResponse.json({ error: "Unknown product code" }, { status: 400 });
+    return NextResponse.json({ error: "Unknown product" }, { status: 400 });
   }
+  // Name and code are taken from the product record so they always match admin edits.
+  const productName = product.name;
+  const productCode = product.code;
 
   let promoDiscountPercent: number | null = null;
   let promoUsed: string | null = null;

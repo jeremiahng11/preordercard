@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+  const code = typeof body.code === "string" ? body.code.trim().slice(0, 48) : "";
   const priceMinor = Number(body.priceMinor);
   const back = typeof body.back === "string" && body.back.trim() ? body.back.trim() : undefined;
   const collectionId = typeof body.collectionId === "string" && body.collectionId ? body.collectionId : null;
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest) {
     : null;
 
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  if (code && !/^[\w -]{2,48}$/.test(code)) {
+    return NextResponse.json({ error: "Product code may use letters, numbers, spaces, - and _ (2–48 chars)" }, { status: 400 });
+  }
   if (!Number.isInteger(priceMinor) || priceMinor <= 0) {
     return NextResponse.json({ error: "Price must be a positive number (in cents)" }, { status: 400 });
   }
@@ -48,10 +52,12 @@ export async function POST(req: NextRequest) {
   const backImage = validImage(body.backImage) ? body.backImage : null;
 
   try {
-    const product = await createProduct({ name, priceMinor, image: body.image, back, backImage, collectionId, comingSoon, comingSoonDate });
+    const product = await createProduct({ name, code: code || undefined, priceMinor, image: body.image, back, backImage, collectionId, comingSoon, comingSoonDate });
     await audit(me.username, "product_created", product.name);
-    return NextResponse.json({ ok: true, id: product.id, slug: product.slug });
+    return NextResponse.json({ ok: true, id: product.id, slug: product.slug, code: product.code });
   } catch (e) {
-    return NextResponse.json({ error: "Could not create product", detail: (e as Error).message }, { status: 500 });
+    const msg = (e as Error).message;
+    if (msg.includes("already in use")) return NextResponse.json({ error: msg }, { status: 409 });
+    return NextResponse.json({ error: "Could not create product", detail: msg }, { status: 500 });
   }
 }

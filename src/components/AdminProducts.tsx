@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 export type ProductView = {
   id: string;
   slug: string;
+  code: string;
   name: string;
   priceMinor: number;
   currency: string;
@@ -106,6 +107,7 @@ function AddProduct({
   collections: CollectionOption[];
   onCreate: (p: {
     name: string;
+    code: string;
     priceMinor: number;
     image: string;
     backImage: string | null;
@@ -116,6 +118,7 @@ function AddProduct({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [price, setPrice] = useState("18.00");
   const [collectionId, setCollectionId] = useState(collections[0]?.id ?? "");
   const [comingSoon, setComingSoon] = useState(false);
@@ -139,6 +142,7 @@ function AddProduct({
     if (!name.trim() || !image || !collectionId || !Number.isFinite(priceMinor) || priceMinor <= 0) return;
     const ok = await onCreate({
       name: name.trim(),
+      code: code.trim(),
       priceMinor,
       image,
       backImage,
@@ -148,6 +152,7 @@ function AddProduct({
     });
     if (ok) {
       setName("");
+      setCode("");
       setPrice("18.00");
       setComingSoon(false);
       setComingSoonDate("");
@@ -181,6 +186,8 @@ function AddProduct({
           </select>
           <Label>Name</Label>
           <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Starry Night" />
+          <Label>Product code (optional — defaults to an auto code)</Label>
+          <input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. SEASIDE-HOLIDAY" />
           <Label>Price (SGD)</Label>
           <input style={input} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
           <Label>Card image (front artwork — landscape)</Label>
@@ -217,6 +224,7 @@ function ProductRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(product.name);
+  const [code, setCode] = useState(product.code);
   const [price, setPrice] = useState(dollars(product.priceMinor));
   const [collectionId, setCollectionId] = useState(product.collectionId ?? "");
   const [comingSoon, setComingSoon] = useState(product.comingSoon);
@@ -244,6 +252,7 @@ function ProductRow({
     const payload: Record<string, unknown> = {
       id: product.id,
       name: name.trim(),
+      code: code.trim(),
       priceMinor,
       collectionId,
       comingSoon,
@@ -276,6 +285,8 @@ function ProductRow({
               </select>
               <Label>Name</Label>
               <input style={input} value={name} onChange={(e) => setName(e.target.value)} />
+              <Label>Product code</Label>
+              <input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. SEASIDE-HOLIDAY" />
               <Label>Price (SGD)</Label>
               <input style={input} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
               <Label>Replace front image (optional)</Label>
@@ -293,7 +304,7 @@ function ProductRow({
                 <button onClick={save} disabled={busy} style={primaryBtn}>
                   Save
                 </button>
-                <button onClick={() => { setEditing(false); setImage(null); setName(product.name); setPrice(dollars(product.priceMinor)); }} style={ghostBtn}>
+                <button onClick={() => { setEditing(false); setImage(null); setName(product.name); setCode(product.code); setPrice(dollars(product.priceMinor)); }} style={ghostBtn}>
                   Cancel
                 </button>
               </div>
@@ -315,6 +326,7 @@ function ProductRow({
                 {product.currency} {dollars(product.priceMinor)} · {collName}
                 {product.backImage ? " · custom back" : ""}
               </div>
+              <div style={{ color: "#aeb6c2", fontSize: 12, marginTop: 4 }}>Product code: <strong style={{ color: "#e2e6ec" }}>{product.code}</strong></div>
               <div style={{ color: "#5b6473", fontSize: 11, marginTop: 2 }}>slug: {product.slug}</div>
 
               {canWrite && (

@@ -25,6 +25,7 @@ export default async function AdminProductsPage() {
       products = rows.map((p) => ({
         id: p.id,
         slug: p.slug,
+        code: p.code,
         name: p.name,
         priceMinor: p.priceMinor,
         currency: p.currency,

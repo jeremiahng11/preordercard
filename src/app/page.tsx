@@ -29,6 +29,7 @@ export default async function Home() {
             .filter((p) => p.collectionId === c.id)
             .map((p) => ({
               id: p.slug,
+              code: p.code,
               name: p.name,
               img: p.image,
               back: p.back,

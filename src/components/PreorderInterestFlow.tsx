@@ -8,6 +8,7 @@ export type StoreLinks = { appStore: string; playStore: string };
 
 export type StoreProduct = {
   id: string;
+  code: string;
   name: string;
   img: string;
   back: string;
@@ -305,8 +306,7 @@ export default function PreorderInterestFlow({
           fullName: form.fullName,
           email: form.email,
           mobile: form.mobile,
-          productName: selected.name,
-          productCode: selected.id,
+          productSlug: selected.id,
           promoCode: form.promoCode.trim(),
         }),
       });
@@ -449,7 +449,7 @@ export default function PreorderInterestFlow({
                       <div className="sg-badge" style={{ background: "#EEE9FF", color: "#6B39E8" }}>Available {comingSoonLabel || "soon"}</div>
                     ) : null}
                   </div>
-                  <p className="sg-note">Product code: <strong>{selected.id}</strong></p>
+                  <p className="sg-note">Product code: <strong>{selected.code}</strong></p>
                 </div>
 
                 {appPromo}
@@ -475,7 +475,7 @@ export default function PreorderInterestFlow({
                   <div style={{ width: 64, height: 64, borderRadius: 99, background: "linear-gradient(135deg,#9FE3C3,#6FD9A8)", display: "grid", placeItems: "center", margin: "0 auto 14px", color: "#fff", fontSize: 30, boxShadow: "0 10px 24px -8px rgba(111,217,168,.7)" }}>✓</div>
                   <h1 className="sg-h1" style={{ fontSize: 22 }}>Reservation confirmed!</h1>
                   <p className="sg-lead" style={{ marginTop: 10 }}>This early bird is a reservation — we’ve saved your {selected.name} at your early-bird price. We’ll email you when it’s available on 24 July.</p>
-                  <p className="sg-note" style={{ marginTop: 10 }}>Product code: <strong>{selected.id}</strong></p>
+                  <p className="sg-note" style={{ marginTop: 10 }}>Product code: <strong>{selected.code}</strong></p>
                   {promoDiscount ? (
                     <>
                       <p className="sg-note">Original price: <strong style={{ textDecoration: "line-through" }}>{priceLabel}</strong></p>

@@ -42,8 +42,15 @@ export async function getProductById(id: string): Promise<Product | null> {
   return row ?? null;
 }
 
+export async function getProductByCode(code: string): Promise<Product | null> {
+  const db = getDb();
+  const [row] = await db.select().from(products).where(eq(products.code, code)).limit(1);
+  return row ?? null;
+}
+
 export interface CreateProductInput {
   name: string;
+  code?: string | null; // admin-facing product code; defaults to the slug
   priceMinor: number;
   currency?: string;
   image: string; // data URL
@@ -56,6 +63,10 @@ export interface CreateProductInput {
 
 export async function createProduct(input: CreateProductInput): Promise<Product> {
   const db = getDb();
+  const code = input.code?.trim() ? input.code.trim().slice(0, 48) : null;
+  if (code && (await getProductByCode(code))) {
+    throw new Error("Product code already in use");
+  }
   for (let attempt = 0; attempt < 5; attempt++) {
     const suffix = crypto.randomBytes(2).toString("hex");
     const slug = `${slugify(input.name)}-${suffix}`.slice(0, 48);
@@ -64,6 +75,7 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
         .insert(products)
         .values({
           slug,
+          code: code ?? slug,
           name: input.name,
           priceMinor: input.priceMinor,
           currency: input.currency ?? "SGD",
@@ -78,7 +90,9 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
         .returning();
       return row;
     } catch (e) {
-      if ((e as Error).message.includes("products_slug_uq") && attempt < 4) continue;
+      const msg = (e as Error).message;
+      if (msg.includes("products_code_uq")) throw new Error("Product code already in use");
+      if (msg.includes("products_slug_uq") && attempt < 4) continue;
       throw e;
     }
   }
@@ -87,6 +101,7 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
 
 export interface UpdateProductInput {
   name?: string;
+  code?: string;
   priceMinor?: number;
   image?: string;
   back?: string;
@@ -98,8 +113,13 @@ export interface UpdateProductInput {
 
 export async function updateProduct(id: string, input: UpdateProductInput): Promise<Product | null> {
   const db = getDb();
+  if (input.code !== undefined) {
+    const clash = await getProductByCode(input.code);
+    if (clash && clash.id !== id) throw new Error("Product code already in use");
+  }
   const patch: Partial<typeof products.$inferInsert> = { updatedAt: new Date() };
   if (input.name !== undefined) patch.name = input.name;
+  if (input.code !== undefined) patch.code = input.code;
   if (input.priceMinor !== undefined) patch.priceMinor = input.priceMinor;
   if (input.image !== undefined) patch.image = input.image;
   if (input.back !== undefined) patch.back = input.back;
