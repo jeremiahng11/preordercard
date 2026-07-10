@@ -1,4 +1,4 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser, isAdminConfigured } from "@/lib/admin-auth";
 import { isDbConfigured } from "@/lib/db";
@@ -19,6 +19,7 @@ export default async function AdminDashboard() {
       </Shell>
     );
   }
+
   const me = await getCurrentUser();
   if (!me) redirect("/admin/login");
 
@@ -42,7 +43,10 @@ export default async function AdminDashboard() {
   const topProducts = Object.entries(productCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
-  const recentInterests = interests.slice(0, 20);
+  const recentInterests = interests.slice(0, 20).map((item) => ({
+    ...item,
+    createdAt: new Date(item.createdAt).toLocaleString(),
+  }));
 
   const stats = [
     { label: "Interest registrations", value: String(total), color: "#7ee2a0" },
@@ -95,7 +99,7 @@ export default async function AdminDashboard() {
   );
 }
 
-function Shell({ children, nav = true, role = "user" }: { children: React.ReactNode; nav?: boolean; role?: string }) {
+function Shell({ children, nav = true, role = "user" }: { children: ReactNode; nav?: boolean; role?: string }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
@@ -107,23 +111,3 @@ function Shell({ children, nav = true, role = "user" }: { children: React.ReactN
 }
 
 const cardBox: React.CSSProperties = { background: "#181b22", border: "1px solid #262b36", borderRadius: 12, padding: "14px 16px" };
-
-function PageLink({ href, disabled, label }: { href: string; disabled: boolean; label: string }) {
-  if (disabled) return <span style={{ padding: "7px 12px", borderRadius: 8, color: "#4a5160", border: "1px solid #20242d" }}>{label}</span>;
-  return (
-    <Link href={href} style={{ padding: "7px 12px", borderRadius: 8, color: "#e2e6ec", border: "1px solid #2d333f", background: "#2d333f", textDecoration: "none" }}>
-      {label}
-    </Link>
-  );
-}
-
-function Shell({ children, nav = true, role = "user" }: { children: React.ReactNode; nav?: boolean; role?: string }) {
-  return (
-    <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
-        {nav && <AdminNav role={role} />}
-        {children}
-      </div>
-    </div>
-  );
-}
