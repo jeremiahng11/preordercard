@@ -144,6 +144,16 @@ This repo includes a multi-stage [`Dockerfile`](Dockerfile) and
    automatically, or set it explicitly to your custom domain.
 5. Deploy. Migrations run on boot; visit the generated URL.
 
+### Railway one-step deploy
+
+From the repo root, run:
+
+```bash
+npm run deploy:railway
+```
+
+This pushes `main` to the `preordercard` remote and triggers `railway up --detach`.
+
 Run the production image locally with Docker:
 
 ```bash

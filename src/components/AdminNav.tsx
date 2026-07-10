@@ -45,7 +45,7 @@ export default function AdminNav({ role = "user" }: { role?: string }) {
         <Link href="/admin" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#fff" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={ADV_LOGO} alt="Aleta Adventure" style={{ height: 28, width: "auto" }} />
-          <span style={{ fontWeight: 800, fontSize: 16 }}>Gift Card Admin</span>
+          <span style={{ fontWeight: 800, fontSize: 16 }}>Preorder Admin</span>
           {role === "developer" && (
             <span style={{ fontSize: 10, fontWeight: 700, color: "#8fc1ff", background: "#1c2c44", padding: "2px 7px", borderRadius: 99, textTransform: "uppercase" }}>
               read-only

@@ -67,8 +67,8 @@ export default function AdminLoginPage() {
           color: "#e8eaed",
         }}
       >
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Gift Card Admin</h1>
-        <p style={{ color: "#9aa3b2", fontSize: 13, marginTop: 6 }}>Sign in to manage purchased codes.</p>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Preorder Admin</h1>
+        <p style={{ color: "#9aa3b2", fontSize: 13, marginTop: 6 }}>Sign in to manage preorder interest registrations.</p>
 
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginTop: 20, marginBottom: 6 }}>Username</label>
         <input

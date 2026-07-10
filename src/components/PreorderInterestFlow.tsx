@@ -93,6 +93,7 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
   const [promoDiscount, setPromoDiscount] = useState<number | null>(null);
   const [promoValidity, setPromoValidity] = useState<{ valid: boolean; message: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
+  const [agreed, setAgreed] = useState(true);
 
   const setField = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
   const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -164,7 +165,13 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
           promoCode: form.promoCode.trim(),
         }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { error: text || "Unexpected server response" };
+      }
       if (!res.ok) {
         throw new Error(data.error || data.detail || "Could not submit your interest.");
       }
@@ -203,6 +210,19 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                 </div>
 
                 <div className="sg-panel" style={{ marginTop: 16 }}>
+                  <div className="sg-row" style={{ gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div className="sg-label">Price</div>
+                      <div className="sg-price">{priceLabel}</div>
+                    </div>
+                    {comingSoon ? (
+                      <div className="sg-badge" style={{ background: "#EEE9FF", color: "#6B39E8" }}>Available {comingSoonLabel || "soon"}</div>
+                    ) : null}
+                  </div>
+                  <p className="sg-note">Product code: <strong>{selected.id}</strong></p>
+                </div>
+
+                <div className="sg-panel" style={{ marginTop: 16 }}>
                   <label className="sg-label">Choose a design</label>
                   <div className="sg-swatches">
                     {cards.map((d) => (
@@ -222,31 +242,6 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
                 </div>
 
                 <div className="sg-panel" style={{ marginTop: 16 }}>
-                  <div className="sg-row" style={{ gap: 12, flexWrap: "wrap" }}>
-                    <div>
-                      <div className="sg-label">Price</div>
-                      <div className="sg-price">{priceLabel}</div>
-                    </div>
-                    {comingSoon ? (
-                      <div className="sg-badge" style={{ background: "#EEE9FF", color: "#6B39E8" }}>Available {comingSoonLabel || "soon"}</div>
-                    ) : null}
-                  </div>
-                  <p className="sg-note">Product code: <strong>{selected.id}</strong></p>
-                </div>
-
-<div style={{ marginTop: 14 }}>
-                  <button type="button" className="sg-btn sg-btn-primary" onClick={handleSubmit} disabled={!detailsOk || submitting || unavailable} style={{ width: "100%" }}>
-                    {submitting ? "Submitting…" : "Submit interest"}
-                  </button>
-                </div>
-                {submitError && <p className="sg-hint" style={{ color: "var(--rose)", marginTop: 12 }}>{submitError}</p>}
-                {unavailable && <p className="sg-hint" style={{ marginTop: 12 }}>This design is not accepting preorder interest right now.</p>}
-              </div>
-            )}
-
-            {!submitted && (
-              <div className="sg-fadein">
-                <div className="sg-panel">
                   <div className="sg-eyebrow">Your details</div>
                   <h1 className="sg-h1" style={{ fontSize: 22 }}>Request updates for {selected.name}</h1>
                   <p className="sg-note" style={{ marginTop: 10 }}>Mandatory fields: Name, Email address, Mobile</p>
@@ -264,11 +259,33 @@ export default function PreorderInterestFlow({ collections }: { collections: Sto
 
                   <label className="sg-label">Promo code (optional)</label>
                   <input className="sg-input" value={form.promoCode} onChange={setField("promoCode")} placeholder="e.g. IMKOMEI15" />
-                  <p className="sg-hint">Use a promo code if you have one; e.g. IMKOMEI15. We’ll validate it when you submit.</p>
+                  {promoValidity && (
+                    <p className="sg-hint" style={{ color: promoValidity.valid ? "#2F855A" : "var(--rose)", marginTop: 6 }}>
+                      {promoChecking ? "Checking promo code..." : promoValidity.message}
+                    </p>
+                  )}
+
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 12, marginTop: 18 }}>
+                    <input
+                      type="checkbox"
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      style={{ width: 18, height: 18, marginTop: 2 }}
+                    />
+                    <span style={{ fontSize: 14, lineHeight: 1.4, color: "var(--ink)" }}>
+                      I agree to allow Aleta Planet to contact me for the Early Bird Signup.
+                    </span>
+                  </label>
                 </div>
 
                 <div style={{ marginTop: 14 }}>
-                  <button type="button" className="sg-btn sg-btn-primary" onClick={handleSubmit} disabled={!detailsOk || submitting || unavailable} style={{ width: "100%" }}>
+                  <button
+                    type="button"
+                    className="sg-btn sg-btn-primary"
+                    onClick={handleSubmit}
+                    disabled={!detailsOk || submitting || unavailable || !agreed}
+                    style={{ width: "100%" }}
+                  >
                     {submitting ? "Submitting…" : "Submit interest"}
                   </button>
                 </div>

@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:reset": "drizzle-kit migrate reset && drizzle-kit migrate",
+    "deploy:railway": "sh ./scripts/deploy-railway.sh",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
