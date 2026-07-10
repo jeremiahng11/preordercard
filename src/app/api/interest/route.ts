@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isDbConfigured } from "@/lib/db";
-import { createInterest } from "@/lib/customer-interest";
+import { createInterest, markInterestEmailed } from "@/lib/customer-interest";
 import { getProductBySlug } from "@/lib/products";
 import { getPromoCodeByCode, isPromoCodeActive } from "@/lib/promocodes";
 import { audit } from "@/lib/audit";
@@ -71,11 +71,17 @@ export async function POST(req: NextRequest) {
     email,
     productName,
     productCode,
+    priceMinor: product.priceMinor,
+    currency: product.currency,
     promoCode: promoUsed,
     promoDiscountPercent,
-  }).catch((error) => {
-    console.error("Failed to send interest confirmation email:", error);
-  });
+  })
+    .then((result) => {
+      if (result.sent > 0) return markInterestEmailed(interest.id);
+    })
+    .catch((error) => {
+      console.error("Failed to send interest confirmation email:", error);
+    });
 
   return NextResponse.json({ ok: true, id: interest.id, promoDiscountPercent });
 }

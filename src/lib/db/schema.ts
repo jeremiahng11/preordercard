@@ -146,6 +146,8 @@ export const customerInterests = pgTable(
     currency: varchar("currency", { length: 3 }).notNull().default("SGD"),
     promoCode: varchar("promo_code", { length: 32 }),
     promoDiscountPercent: integer("promo_discount_percent"),
+    status: varchar("status", { length: 16 }).notNull().default("active"),
+    lastEmailedAt: timestamp("last_emailed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
 );

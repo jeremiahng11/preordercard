@@ -24,7 +24,7 @@ export default async function AdminInterestsPage() {
     );
   }
 
-  const interests = (await listInterests(500)).map((item) => ({
+  const interests: InterestView[] = (await listInterests(500)).map((item) => ({
     id: item.id,
     fullName: item.fullName,
     email: item.email,
@@ -35,15 +35,19 @@ export default async function AdminInterestsPage() {
     currency: item.currency,
     promoCode: item.promoCode,
     promoDiscountPercent: item.promoDiscountPercent,
+    status: item.status,
+    lastEmailedAt: item.lastEmailedAt ? item.lastEmailedAt.toISOString() : null,
     createdAt: item.createdAt.toISOString(),
   }));
+  const canWrite = me.role !== "developer";
+  const canDelete = me.role === "admin";
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f1115", color: "#e8eaed", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
         <AdminNav role={me.role} />
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 18px" }}>Customer interests</h1>
-        <AdminInterests interests={interests} />
+        <AdminInterests interests={interests} canWrite={canWrite} canDelete={canDelete} />
       </div>
     </div>
   );

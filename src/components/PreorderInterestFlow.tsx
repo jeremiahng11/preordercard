@@ -33,7 +33,7 @@ function fmtComingSoon(d: string | null | undefined): string {
   if (!m) return d;
   const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   if (Number.isNaN(date.getTime())) return d;
-  return date.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Singapore" });
 }
 
 function fmtPrice(minor: number, currency: string): string {

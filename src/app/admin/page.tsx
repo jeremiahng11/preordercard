@@ -56,8 +56,11 @@ export default async function AdminDashboard() {
     .slice(0, 5);
   const recentInterests = interests.slice(0, 20).map((item) => ({
     ...item,
-    createdAt: new Date(item.createdAt).toLocaleString(),
+    createdAt: new Date(item.createdAt).toISOString(),
+    lastEmailedAt: item.lastEmailedAt ? new Date(item.lastEmailedAt).toISOString() : null,
   }));
+  const canWrite = me.role !== "developer";
+  const canDelete = me.role === "admin";
 
   const stats = [
     { label: "Interest registrations", value: String(total), color: "#7ee2a0" },
@@ -99,7 +102,7 @@ export default async function AdminDashboard() {
         <div style={{ fontSize: 12, color: "#7c8595", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.6 }}>
           Latest registrations
         </div>
-        <AdminInterests interests={recentInterests} />
+        <AdminInterests interests={recentInterests} canWrite={canWrite} canDelete={canDelete} />
         {total > recentInterests.length && (
           <p style={{ marginTop: 14, color: "#9aa3b2", fontSize: 13 }}>
             Showing the latest {recentInterests.length} of {total} interest records.

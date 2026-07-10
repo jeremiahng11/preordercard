@@ -85,6 +85,13 @@
       "when": 1783653445000,
       "tag": "0011_preorder_promo_interest",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783700000000,
+      "tag": "0012_interest_status",
+      "breakpoints": true
     }
   ]
 }

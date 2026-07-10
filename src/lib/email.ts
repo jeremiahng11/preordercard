@@ -238,30 +238,79 @@ export interface InterestEmailData {
   email: string;
   productName: string;
   productCode: string;
+  priceMinor?: number | null;
+  currency?: string | null;
   promoCode?: string | null;
   promoDiscountPercent?: number | null;
 }
 
+/** A labelled row for the order-summary table. */
+function summaryRow(label: string, value: string, opts?: { strong?: boolean; strike?: boolean }): string {
+  const valStyle = [
+    `color:${opts?.strong ? "#2C2433" : "#4B4356"}`,
+    "font-size:14px",
+    "text-align:right",
+    opts?.strong ? "font-weight:700" : "",
+    opts?.strike ? "text-decoration:line-through;color:#9087A0" : "",
+  ]
+    .filter(Boolean)
+    .join(";");
+  return `<tr>
+    <td style="padding:6px 0;color:#9087A0;font-size:14px;font-family:${FONT}">${label}</td>
+    <td style="padding:6px 0;font-family:${FONT};${valStyle}">${value}</td>
+  </tr>`;
+}
+
+function orderSummary(data: InterestEmailData): string {
+  const currency = data.currency || "SGD";
+  const hasPrice = typeof data.priceMinor === "number" && data.priceMinor > 0;
+  const base = hasPrice ? data.priceMinor! : 0;
+  const discountPct = data.promoCode && data.promoDiscountPercent ? data.promoDiscountPercent : 0;
+  const discounted = discountPct ? Math.round(base * (1 - discountPct / 100)) : base;
+
+  const rows = [
+    summaryRow("Design", escape(data.productName), { strong: true }),
+    summaryRow("Product code", escape(data.productCode)),
+  ];
+  if (hasPrice) {
+    if (discountPct) {
+      rows.push(summaryRow("Price", formatAmount(base, currency), { strike: true }));
+      rows.push(summaryRow(`Promo ${escape(data.promoCode!)} (−${discountPct}%)`, `−${formatAmount(base - discounted, currency)}`));
+      rows.push(summaryRow("Early-bird total", formatAmount(discounted, currency), { strong: true }));
+    } else {
+      rows.push(summaryRow("Early-bird price", formatAmount(base, currency), { strong: true }));
+    }
+  } else if (data.promoCode) {
+    rows.push(summaryRow("Promo code", `${escape(data.promoCode)}${discountPct ? ` (−${discountPct}%)` : ""}`, { strong: true }));
+  }
+
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;border-top:1px solid #EFE3EC;border-bottom:1px solid #EFE3EC">
+    ${rows.join("")}
+  </table>`;
+}
+
 function interestHtml(data: InterestEmailData): string {
-  const promoLine = data.promoCode
-    ? `<p style="margin:16px 0 0;color:#2C2433;font-size:14px">Your promo code <strong>${escape(data.promoCode)}</strong> is attached to this registration${
-        data.promoDiscountPercent ? ` with ${data.promoDiscountPercent}% discount` : ""
-      }.</p>`
-    : `<p style="margin:16px 0 0;color:#2C2433;font-size:14px">No promo code was entered for this registration.</p>`;
+  const promoNote = data.promoCode
+    ? `<p style="margin:0 0 16px;color:#2C2433;font-size:14px">We’ve locked in your promo code <strong>${escape(data.promoCode)}</strong>${
+        data.promoDiscountPercent ? ` — a ${data.promoDiscountPercent}% early-bird discount` : ""
+      } for this order.</p>`
+    : `<p style="margin:0 0 16px;color:#9087A0;font-size:14px">No promo code was entered for this order.</p>`;
 
   return shell(`
-    <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Thanks for registering your interest, ${escape(data.fullName)}!</h1>
-    <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 16px">We’ve received your early access request for <strong>${escape(data.productName)}</strong>.</p>
-    <p style="margin:0;color:#2C2433;font-size:14px">Product code: <strong>${escape(data.productCode)}</strong></p>
-    ${promoLine}
-    <p style="margin:16px 0 0;color:#9087A0;font-size:13px;line-height:1.5">We’ll contact you again when the preorder opens and your selected design is available.</p>
+    <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird order is reserved, ${escape(data.fullName)}! 🎉</h1>
+    <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for registering your interest in <strong>${escape(data.productName)}</strong>. Here’s a summary of your early-bird order.</p>
+    ${promoNote}
+    ${orderSummary(data)}
+    <p style="margin:16px 0 0;color:#9087A0;font-size:13px;line-height:1.5">We’ll email you again the moment the preorder opens and your selected design is available. Your promo code will already be applied.</p>
     <p style="margin:24px 0 0;color:#2C2433;font-size:14px;font-weight:700">Thanks for your interest,<br/>The Aleta Adventure team</p>
   `);
 }
 
 export async function sendInterestConfirmationEmail(data: InterestEmailData): Promise<EmailResult> {
   const html = interestHtml(data);
-  const subject = data.promoCode ? `Your preorder interest includes promo code ${data.promoCode}` : "Your preorder interest has been received";
+  const subject = data.promoCode
+    ? `Your early-bird order for ${data.productName} (promo ${data.promoCode})`
+    : `Your early-bird order for ${data.productName}`;
   const result = await sendOne(data.email, subject, html);
   return { sent: result === "sent" ? 1 : 0, skipped: result === "skipped" ? 1 : 0, errors: [] };
 }

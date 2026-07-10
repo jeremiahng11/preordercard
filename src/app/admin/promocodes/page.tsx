@@ -39,7 +39,7 @@ export default async function AdminPromoCodesPage() {
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 56px" }}>
         <AdminNav role={me.role} />
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 18px" }}>Promo codes</h1>
-        <AdminPromoCodes promoCodes={promos} />
+        <AdminPromoCodes promoCodes={promos} canWrite={me.role !== "developer"} />
       </div>
     </div>
   );
