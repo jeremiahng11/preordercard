@@ -303,8 +303,8 @@ function interestHtml(data: InterestEmailData, hasImage: boolean): string {
     : `<p style="margin:16px 0 0;color:#2C2433;font-size:14px;line-height:1.6">👉 Come back on <strong>24 July</strong> when the preorder opens to place your order at your early-bird price.</p>`;
 
   return shell(`
-    <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird reservation is confirmed, ${escape(data.fullName)}! 🎉</h1>
-    <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for reserving <strong>${escape(data.productName)}</strong>. This is a reservation — you won’t be charged yet. Here’s a summary of your early-bird reservation.</p>
+    <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird access is confirmed.</h1>
+    <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for registering our <strong>Collectible Cinnamoroll ${escape(data.productName)} Visa Debit Card</strong>. This is a reservation — you won’t be charged yet. Here’s a summary of your early-bird reservation.</p>
     ${cardImageTag(hasImage)}
     ${promoNote}
     ${orderSummary(data)}
