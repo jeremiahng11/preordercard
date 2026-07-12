@@ -340,6 +340,7 @@ function interestHtmlEn(data: InterestEmailData, hasImage: boolean): string {
     <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">Your early-bird access is confirmed.</h1>
     <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">Thanks for registering our <strong>Collectible Cinnamoroll ${escape(data.productName)} Visa Debit Card</strong>. This is a reservation — you won’t be charged yet. Here’s a summary of your early-bird reservation.</p>
     ${cardImageTag(hasImage)}
+    ${hasImage ? `<p style="text-align:center;color:#9087A0;font-size:12px;font-weight:700;margin:6px 0 14px">${escape(data.productName)}</p>` : ""}
     ${promoNote}
     ${orderSummary(data, "en")}
     ${codeInstruction}
@@ -365,6 +366,7 @@ function interestHtmlZh(data: InterestEmailData, hasImage: boolean): string {
     <h1 style="font-size:20px;margin:0 0 8px;color:#2C2433">您的早鸟预约已确认。</h1>
     <p style="color:#9087A0;font-size:14px;line-height:1.6;margin:0 0 8px">感谢您登记我们的<strong>玉桂狗 ${escape(data.productName)} 收藏版 Visa 借记卡</strong>。这是预约，暂不会扣款。以下是您的早鸟预约摘要。</p>
     ${cardImageTag(hasImage)}
+    ${hasImage ? `<p style="text-align:center;color:#9087A0;font-size:12px;font-weight:700;margin:6px 0 14px">${escape(data.productName)}</p>` : ""}
     ${promoNote}
     ${orderSummary(data, "zh")}
     ${codeInstruction}
@@ -373,6 +375,12 @@ function interestHtmlZh(data: InterestEmailData, hasImage: boolean): string {
     <p style="margin:20px 0 0;color:#9087A0;font-size:13px;line-height:1.5">一旦申请开放且您所选设计上架（7月24日），我们会再次与您联系。</p>
     <p style="margin:24px 0 0;color:#2C2433;font-size:14px;font-weight:700">感谢您的关注，<br/>Aleta Adventure 团队</p>
   `);
+}
+
+/** Language-appropriate reservation email HTML. Exported for previews/tests. */
+export function buildInterestHtml(data: InterestEmailData, hasImage: boolean): string {
+  const lang = data.lang === "zh" ? "zh" : "en";
+  return lang === "zh" ? interestHtmlZh(data, hasImage) : interestHtmlEn(data, hasImage);
 }
 
 export async function sendInterestConfirmationEmail(data: InterestEmailData): Promise<EmailResult> {
@@ -388,8 +396,8 @@ export async function sendInterestConfirmationEmail(data: InterestEmailData): Pr
   const attachment = dataUrlToAttachment(imageDataUrl, CARD_CID);
   const attachments = attachment ? [attachment] : undefined;
 
+  const html = buildInterestHtml(data, Boolean(attachment));
   const lang = data.lang === "zh" ? "zh" : "en";
-  const html = lang === "zh" ? interestHtmlZh(data, Boolean(attachment)) : interestHtmlEn(data, Boolean(attachment));
   const subject =
     lang === "zh"
       ? data.promoCode
